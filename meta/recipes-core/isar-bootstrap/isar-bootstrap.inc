@@ -298,13 +298,23 @@ do_bootstrap() {
         if [ "${BOOTSTRAP_FOR_HOST}" = "0" ]; then
             arch_param="--arch=${DISTRO_ARCH}"
         fi
-        ${DEBOOTSTRAP} $debootstrap_args \
+        if [ "${SHELL}" = "/bin/zsh" ]; then
+            ${DEBOOTSTRAP} ${=debootstrap_args} \
                        $arch_param \
                        ${@get_distro_components_argument(d)} \
                        "${@get_distro_suite(d)}" \
                        "${ROOTFSDIR}" \
                        "${@get_distro_source(d)}" \
                        ${DISTRO_DEBOOTSTRAP_SCRIPT}
+        else
+            ${DEBOOTSTRAP} $debootstrap_args \
+                       $arch_param \
+                       ${@get_distro_components_argument(d)} \
+                       "${@get_distro_suite(d)}" \
+                       "${ROOTFSDIR}" \
+                       "${@get_distro_source(d)}" \
+                       ${DISTRO_DEBOOTSTRAP_SCRIPT}
+        fi
 
         # Install apt config
         mkdir -p "${ROOTFSDIR}/etc/apt/preferences.d"
@@ -341,8 +351,13 @@ do_bootstrap() {
 
             kfn="$(basename $keyfile)"
             cp $keyfile "${ROOTFSDIR}/tmp/$kfn"
-            chroot "${ROOTFSDIR}" /usr/bin/gpg-agent --daemon -- /usr/bin/apt-key \
-                --keyring ${THIRD_PARTY_APT_KEYRING} ${APT_KEY_APPEND} add "/tmp/$kfn"
+            if [ "${SHELL}" = "/bin/zsh" ]; then
+                chroot "${ROOTFSDIR}" /usr/bin/gpg-agent --daemon -- /usr/bin/apt-key \
+                    --keyring ${THIRD_PARTY_APT_KEYRING} ${=APT_KEY_APPEND} add "/tmp/$kfn"
+            else
+                chroot "${ROOTFSDIR}" /usr/bin/gpg-agent --daemon -- /usr/bin/apt-key \
+                    --keyring ${THIRD_PARTY_APT_KEYRING} ${APT_KEY_APPEND} add "/tmp/$kfn"
+            fi
             rm "${ROOTFSDIR}/tmp/$kfn"
 
             echo "Removing ${MY_GPGHOME}"
