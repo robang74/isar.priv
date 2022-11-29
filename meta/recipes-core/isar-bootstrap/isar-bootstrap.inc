@@ -28,7 +28,8 @@ DISTRO_BOOTSTRAP_BASE_PACKAGES_append_gnupg = ",gnupg"
 DISTRO_BOOTSTRAP_BASE_PACKAGES_append_https-support = ",ca-certificates"
 DISTRO_VARS_PREFIX ?= "${@'HOST_' if d.getVar('BOOTSTRAP_FOR_HOST') == '1' else ''}"
 BOOTSTRAP_DISTRO = "${@d.getVar('HOST_DISTRO' if d.getVar('BOOTSTRAP_FOR_HOST') == '1' else 'DISTRO')}"
-FILESEXTRAPATHS:append = ":${BBPATH}"
+BOOTSTRAP_BASE_DISTRO = "${@d.getVar('HOST_BASE_DISTRO' if d.getVar('BOOTSTRAP_FOR_HOST') == '1' else 'BASE_DISTRO')}"
+FILESEXTRAPATHS_append = ":${BBPATH}"
 
 inherit deb-dl-dir
 
