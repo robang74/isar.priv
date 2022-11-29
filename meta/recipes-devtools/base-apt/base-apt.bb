@@ -63,6 +63,7 @@ repo() {
         "${REPO_BASE_DB_DIR}"/"${BASE_DISTRO}"
 
     if [ '${DISTRO}' != '${HOST_DISTRO}' ]; then
+        repo_create "${REPO_BASE_DIR}"/"${HOST_BASE_DISTRO}" \
             "${REPO_BASE_DB_DIR}"/"${HOST_BASE_DISTRO}" \
             "${BASE_DISTRO_CODENAME}" \
             "${WORKDIR}/distributions.in" \
