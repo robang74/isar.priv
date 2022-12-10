@@ -59,36 +59,16 @@ sfdisk -d "${BOOT_DEV}" 2>/dev/null | \
 # Inform the kernel about the partitioning change
 partx -u "${LAST_PART}"
 
-if grep -q x-systemd.growfs /etc/fstab; then
-	echo "Found x-systemd.growfs option in /etc/fstab, won't grow." >&2
-	exit 0
-fi
+# Do not fail resize2fs if no mtab entry is found, e.g.,
+# when using systemd mount units.
+export EXT2FS_NO_MTAB_OK=1
 
-# some filesystems need to be mounted i.e. btrfs, but mounting also helps
-# detect the filesystem type without having to wait for udev
-# mount $LAST_PART out of tree, so we won't conflict with other mounts
-MOUNT_POINT=$(mktemp -d -p "" "$(basename "$0").XXXXXXXXXX")
-mount "${LAST_PART}" "${MOUNT_POINT}"
-
-ret=0
-# Determine the filesystem type and perform the appropriate resize function
-FS_TYPE=$(findmnt -fno FSTYPE "${MOUNT_POINT}" )
-case ${FS_TYPE} in
-ext*)
-	# Do not fail resize2fs if no mtab entry is found, e.g.,
-	# when using systemd mount units.
-	export EXT2FS_NO_MTAB_OK=1
-	resize2fs "${LAST_PART}"
-	;;
-btrfs)
-	btrfs filesystem resize max "${MOUNT_POINT}"
-	;;
-*)
-	echo "Unrecognized filesystem type ${FS_TYPE} - no resize performed"
-	ret=1
-	;;
+case $(lsblk -fno FSTYPE "${LAST_PART}") in
+	ext4) 	resize2fs "${LAST_PART}"
+		;;
+	btrfs) 	tmpdir=$(mktemp -d -p "$TMPDIR" btrfs.XXXX || mktemp -d -p "/dev/shm" btrfs.XXXX)
+		mount "${LAST_PART}" $tmpdir
+		btrfs filesystem resize max $tmpdir
+		umount $tmpdir && rmdir $tmpdir
+		;;
 esac
-
-umount "${MOUNT_POINT}"
-rmdir "${MOUNT_POINT}"
-exit $ret
