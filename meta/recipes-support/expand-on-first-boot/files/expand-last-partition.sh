@@ -9,6 +9,8 @@
 
 set -e
 
+udevadm settle
+
 ROOT_DEV="$(findmnt / -o source -n)"
 ROOT_DEV_NAME=${ROOT_DEV##*/}
 ROOT_DEV_SLAVE=$(find /sys/block/"${ROOT_DEV_NAME}"/slaves -mindepth 1 -print -quit 2>/dev/null || true)
