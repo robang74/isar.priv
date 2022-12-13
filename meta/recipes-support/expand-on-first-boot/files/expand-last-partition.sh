@@ -9,6 +9,8 @@
 
 set -e
 
+test -e /etc/unsupervised && trap reboot EXIT
+
 udevadm settle
 
 ROOT_DEV="$(findmnt / -o source -n)"
@@ -21,7 +23,8 @@ fi
 BOOT_DEV="$(echo "${ROOT_DEV}" | sed 's/p\?[0-9]*$//')"
 if [ "${ROOT_DEV}" = "${BOOT_DEV}" ]; then
 	echo "Boot device equals root device - no partitioning found" >&2
-	exit 1
+	trap - EXIT
+	exit 0
 fi
 
 # this value is in blocks. Normally a block has 512 bytes.
@@ -37,6 +40,7 @@ done
 MINIMAL_SIZE=$((ALL_PARTS_SIZE + BUFFER_SIZE))
 if [ "$DISK_SIZE" -lt "$MINIMAL_SIZE" ]; then
 	echo "Disk is practically already full, doing nothing." >&2
+	trap - EXIT
 	exit 0
 fi
 
@@ -72,3 +76,5 @@ case $(lsblk -fno FSTYPE "${LAST_PART}") in
 		umount $tmpdir && rmdir $tmpdir
 		;;
 esac
+
+trap - EXIT
