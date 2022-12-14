@@ -20,13 +20,6 @@ if [ -n "${ROOT_DEV_SLAVE}" ]; then
 	ROOT_DEV=/dev/${ROOT_DEV_SLAVE##*/}
 fi
 
-BOOT_DEV="$(echo "${ROOT_DEV}" | sed 's/p\?[0-9]*$//')"
-if [ "${ROOT_DEV}" = "${BOOT_DEV}" ]; then
-	echo "Boot device equals root device - no partitioning found" >&2
-	trap - EXIT
-	exit 0
-fi
-
 # full resizing of ext4 and btrfs does not fail nor hurt but supporting more
 # filesystems in future might change this condition, so commenting this code
 useless_for_now() {
@@ -46,26 +39,33 @@ useless_for_now() {
 		trap - EXIT
 		exit 0
 	fi
-}
+} 
 
-LAST_PART="$(sfdisk -d "${BOOT_DEV}" 2>/dev/null | tail -1 | cut -d ' ' -f 1)"
+# TODO, 14.12.2022: this change should be tested with a single volume system
+# preliminary tests shown that ext4 and btrfs entire volumes cam be resized 
+BOOT_DEV="$(echo "${ROOT_DEV}" | sed 's/p\?[0-9]*$//')"
+if [ "${ROOT_DEV}" = "${BOOT_DEV}" ]; then
+	LAST_PART="${BOOT_DEV}"
+else
+	LAST_PART="$(sfdisk -d "${BOOT_DEV}" 2>/dev/null | tail -1 | cut -d ' ' -f 1)"
 
-# Transform the partition table as follows:
-#
-# - Remove any 'last-lba' header so sfdisk uses the entire available space.
-# - If this partition table is MBR and an extended partition container (EBR)
-#   exists, we assume this needs to be expanded as well; remove its size
-#   field so sfdisk expands it.
-# - For the previously fetched last partition, also remove the size field so
-#   sfdisk expands it.
-sfdisk -d "${BOOT_DEV}" 2>/dev/null | \
-	grep -v last-lba | \
-	sed 's|^\(.*, \)size=[^,]*, \(type=[f5]\)$|\1\2|' | \
-	sed 's|^\('"${LAST_PART}"' .*, \)size=[^,]*, |\1|' | \
-	sfdisk --force "${BOOT_DEV}"
+	# Transform the partition table as follows:
+	#
+	# - Remove any 'last-lba' header so sfdisk uses the entire available space.
+	# - If this partition table is MBR and an extended partition container (EBR)
+	#   exists, we assume this needs to be expanded as well; remove its size
+	#   field so sfdisk expands it.
+	# - For the previously fetched last partition, also remove the size field so
+	#   sfdisk expands it.
+	sfdisk -d "${BOOT_DEV}" 2>/dev/null | \
+		grep -v last-lba | \
+		sed 's|^\(.*, \)size=[^,]*, \(type=[f5]\)$|\1\2|' | \
+		sed 's|^\('"${LAST_PART}"' .*, \)size=[^,]*, |\1|' | \
+		sfdisk --force "${BOOT_DEV}"
 
-# Inform the kernel about the partitioning change
-partx -u "${LAST_PART}"
+	# Inform the kernel about the partitioning change
+	partx -u "${LAST_PART}"
+fi
 
 # Do not fail resize2fs if no mtab entry is found, e.g.,
 # when using systemd mount units.
