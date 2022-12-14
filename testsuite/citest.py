@@ -26,13 +26,13 @@ class ReproTest(CIBaseTest):
     """
     def test_repro_signed(self):
         targets = [
-            'mc:bananapi-bullseye:isar-image-base',
+            'mc:rpi-arm-v7-bullseye:isar-image-base',
             'mc:qemuarm64-bullseye:isar-image-base'
                   ]
 
         self.init()
         try:
-            self.perform_repro_test(targets, signed=True)
+            self.perform_repro_test(targets, signed=True, cross=True)
         finally:
             self.move_in_build_dir('tmp', 'tmp_repro_signed')
 
