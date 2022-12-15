@@ -84,11 +84,16 @@ fi
 export EXT2FS_NO_MTAB_OK=1
 
 case $(lsblk -fno FSTYPE "${LAST_PART}") in
-	ext4) 	resize2fs "${LAST_PART}"
+	ext[234]) resize2fs "${LAST_PART}"
 		;;
-	btrfs) 	tmpdir=$(mktemp -d -p "$TMPDIR" btrfs.XXXX || mktemp -d -p "/dev/shm" btrfs.XXXX)
-		mount "${LAST_PART}" $tmpdir
-		btrfs filesystem resize max $tmpdir
-		umount $tmpdir && rmdir $tmpdir
+	btrfs) 	err=0
+		tmpdir=$(mktemp -d -p "$TMPDIR" btrfs.XXXX || \
+			mktemp -d -p "/dev/shm" btrfs.XXXX)
+		mount "${LAST_PART}" "$tmpdir"
+		btrfs filesystem resize max "$tmpdir" || err=1
+		umount "$tmpdir" && rmdir "$tmpdir"
+		exit $err
+		;;
+	*)	echo "WARNING: $0 unsupported filesystem" >/dev/kmsg || true
 		;;
 esac
