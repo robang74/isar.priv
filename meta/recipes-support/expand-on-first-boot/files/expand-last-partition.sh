@@ -7,9 +7,22 @@
 #
 # SPDX-License-Identifier: MIT
 
-set -e
+exitnlog() {
+	ec=$?
+	set +e
+	if [ "$ec" != "0" ]; then
+		echo "ERROR: $0 failed"
+	else
+		echo "$0 succeded"
+	fi >/dev/kmsg
+	if [ "$ec" != "0" -a -e /etc/unsupervised ]; then
+		reboot
+	fi
+}
+export -f exitnlog
+trap exitnlog EXIT
 
-test -e /etc/unsupervised && trap reboot EXIT
+set -e
 
 udevadm settle
 
@@ -36,7 +49,6 @@ useless_for_now() {
 	MINIMAL_SIZE=$((ALL_PARTS_SIZE + BUFFER_SIZE))
 	if [ "$DISK_SIZE" -lt "$MINIMAL_SIZE" ]; then
 		echo "Disk is practically already full, doing nothing." >&2
-		trap - EXIT
 		exit 0
 	fi
 } 
@@ -80,5 +92,3 @@ case $(lsblk -fno FSTYPE "${LAST_PART}") in
 		umount $tmpdir && rmdir $tmpdir
 		;;
 esac
-
-trap - EXIT
