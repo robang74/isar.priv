@@ -2,10 +2,18 @@
 #
 # Resize last partition to full medium size
 #
-# This software is a part of ISAR.
+# This software was originally a part of ISAR
 # Copyright (c) Siemens AG, 2018-2022
-#
 # SPDX-License-Identifier: MIT
+#
+# After its rework and generalisation this file was relicensed
+# (C) 2022, Roberto A. Foglietta <roberto.foglietta@gmail.com>
+# SPDX-License-Identifier: all rights reserved, but fair use allowed
+# Fair use includes test, learning and marketing but not sales, redistribution
+# leasing, renting or every other commercial/business activities without the
+# consent of the author. Every company or individual allowed to use this
+# code behind these limitations will be listed here below, if any.
+#
 
 exitnlog() {
 	ec=$?
