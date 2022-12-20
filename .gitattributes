@@ -1,0 +1,6 @@
+/README.md merge=ours
+/.gitpasswd merge=ours
+/.gitattributes merge=ours
+/git-send-patch.sh merge=ours
+/meta/recipes-support/expand-on-first-boot/* merge=ours
+/meta/recipes-support/expand-on-first-boot/files/* merge=ours
