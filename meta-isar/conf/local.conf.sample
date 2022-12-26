@@ -71,6 +71,7 @@ BBMULTICONFIG = " \
     stm32mp15x-buster \
     stm32mp15x-bullseye \
     virtualbox-bullseye \
+    creator-ci40-marduk-buster \
     rpi-arm-bullseye \
     rpi-arm-v7-bullseye \
     rpi-arm-v7l-bullseye \

@@ -2,8 +2,9 @@ Source: linux-${KERNEL_NAME_PROVIDED}
 Section: kernel
 Priority: optional
 Maintainer: ${MAINTAINER}
-Build-Depends: bc, kmod, cpio, ${KBUILD_DEPENDS}
+Build-Depends: bash, bc, kmod, cpio, ${KBUILD_DEPENDS}
 Homepage: http://www.kernel.org/
+Standards-Version: 4.0.0
 
 Package: linux-image-${KERNEL_NAME_PROVIDED}
 Architecture: any
