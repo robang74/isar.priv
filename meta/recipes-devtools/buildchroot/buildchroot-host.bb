@@ -17,6 +17,12 @@ BUILDCHROOT_PREINSTALL ?= " \
     libc6:${DISTRO_ARCH} \
     crossbuild-essential-${DISTRO_ARCH}"
 
+buildchroot_install_files:append() {
+    if [ -e '/usr/bin/qemu-${QEMU_ARCH}-static' ]; then
+       sudo cp '/usr/bin/qemu-${QEMU_ARCH}-static' '${BUILDCHROOT_DIR}/usr/bin/qemu-${QEMU_ARCH}-static'
+    fi
+}
+
 BUILDCHROOT_PREINSTALL:riscv64 ?= " \
     ${BUILDCHROOT_PREINSTALL_COMMON} \
     libc6:${DISTRO_ARCH} \
