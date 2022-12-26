@@ -24,12 +24,12 @@ DISTRO_BOOTSTRAP_KEYFILES = ""
 THIRD_PARTY_APT_KEYFILES = ""
 DEPLOY_ISAR_BOOTSTRAP ?= ""
 DISTRO_BOOTSTRAP_BASE_PACKAGES = "locales"
-DISTRO_BOOTSTRAP_BASE_PACKAGES_append_gnupg = ",gnupg"
-DISTRO_BOOTSTRAP_BASE_PACKAGES_append_https-support = ",ca-certificates"
+DISTRO_BOOTSTRAP_BASE_PACKAGES:append:gnupg = ",gnupg"
+DISTRO_BOOTSTRAP_BASE_PACKAGES:append:https-support = ",ca-certificates"
 DISTRO_VARS_PREFIX ?= "${@'HOST_' if d.getVar('BOOTSTRAP_FOR_HOST') == '1' else ''}"
 BOOTSTRAP_DISTRO = "${@d.getVar('HOST_DISTRO' if d.getVar('BOOTSTRAP_FOR_HOST') == '1' else 'DISTRO')}"
 BOOTSTRAP_BASE_DISTRO = "${@d.getVar('HOST_BASE_DISTRO' if d.getVar('BOOTSTRAP_FOR_HOST') == '1' else 'BASE_DISTRO')}"
-FILESEXTRAPATHS_append = ":${BBPATH}"
+FILESEXTRAPATHS:append = ":${BBPATH}"
 
 inherit deb-dl-dir
 
