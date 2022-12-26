@@ -30,7 +30,6 @@ KERNEL_DEBIAN_DEPENDS ?= "initramfs-tools | linux-initramfs-tool, \
                           linux-base (>= 4.3~),"
 
 LIBSSL_DEP = "libssl3"
-LIBSSL_DEP:stretch = "libssl1.1"
 LIBSSL_DEP:buster = "libssl1.1"
 LIBSSL_DEP:bullseye = "libssl1.1"
 
