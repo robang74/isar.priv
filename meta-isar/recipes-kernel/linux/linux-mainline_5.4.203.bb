@@ -17,6 +17,14 @@ SRC_URI += " \
 
 SRC_URI[sha256sum] = "fc933f5b13066cfa54aacb5e86747a167bad1d8d23972e4a03ab5ee36c29798a"
 
+ISAR_CROSS_COMPILE_creator-ci40-marduk = "1"
+SRC_URI:append_creator-ci40-marduk = " \
+    file://0001-MIPS-pistachio-set-KBUILD_IMAGE-to-uImage.gz.patch \
+    file://isar-as-localversion.cfg \
+    file://no-display.cfg \
+    file://no-fs-nfs.cfg \
+    file://no-sound.cfg"
+
 S = "${WORKDIR}/linux-${ARCHIVE_VERSION}"
 
 KERNEL_DEFCONFIG:qemuamd64 = "x86_64_defconfig"

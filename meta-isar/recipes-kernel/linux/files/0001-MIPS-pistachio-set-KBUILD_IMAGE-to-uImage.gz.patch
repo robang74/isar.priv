@@ -1,0 +1,27 @@
+From 7b8209dd21049d57e80ece10862d90105a1f6340 Mon Sep 17 00:00:00 2001
+From: Cedric Hombourger <Cedric_Hombourger@mentor.com>
+Date: Thu, 13 Jun 2019 15:56:48 -0400
+Subject: [PATCH] MIPS: pistachio: set KBUILD_IMAGE to uImage.gz
+
+scripts/package/builddep uses the image_name make target to determine
+the kernel image binary to be included in the linux-image package. As
+the u-boot binary expects a kernel in the uImage format, make sure
+"make -s image_name" prints arch/mips/boot/uImage.gz.
+
+Signed-off-by: Cedric Hombourger <Cedric_Hombourger@mentor.com>
+---
+ arch/mips/pistachio/Platform | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/mips/pistachio/Platform b/arch/mips/pistachio/Platform
+index c3592b374ad2..ab3962b8c3b4 100644
+--- a/arch/mips/pistachio/Platform
++++ b/arch/mips/pistachio/Platform
+@@ -7,3 +7,4 @@ cflags-$(CONFIG_MACH_PISTACHIO)		+=				\
+ load-$(CONFIG_MACH_PISTACHIO)		+= 0xffffffff80400000
+ zload-$(CONFIG_MACH_PISTACHIO)		+= 0xffffffff81000000
+ all-$(CONFIG_MACH_PISTACHIO)		:= uImage.gz
++KBUILD_IMAGE                            := arch/mips/boot/uImage.gz
+-- 
+2.11.0
+
