@@ -21,7 +21,7 @@ def expand_sbuild_pt_additions(d):
             cmds += 'sbuild_export ' + var + ' "' + varval + '"\n'
     return cmds
 
-do_prepare_build_append() {
+do_prepare_build:append() {
     env > ${DPKG_PREBUILD_ENV_FILE}
 }
 
