@@ -351,17 +351,17 @@ do_copy_boot_files[dirs] = "${DEPLOY_DIR_IMAGE}"
 do_copy_boot_files[lockfiles] += "${DEPLOY_DIR_IMAGE}/isar.lock"
 do_copy_boot_files[network] = "${TASK_USE_SUDO}"
 do_copy_boot_files() {
-    kernel="$(realpath -q '${IMAGE_ROOTFS}'/vmlinu[xz])"
+    kernel="$(realpath -q '${IMAGE_ROOTFS}'/vmlinu[xz] || true)"
     if [ ! -f "$kernel" ]; then
-        kernel="$(realpath -q '${IMAGE_ROOTFS}'/boot/vmlinu[xz])"
+        kernel="$(realpath -q '${IMAGE_ROOTFS}'/boot/vmlinu[xz] || true)"
     fi
     if [ -f "$kernel" ]; then
         sudo cat "$kernel" > "${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGE}"
     fi
 
-    initrd="$(realpath -q '${IMAGE_ROOTFS}/initrd.img')"
+    initrd="$(realpath -q '${IMAGE_ROOTFS}/initrd.img' || true)"
     if [ ! -f "$initrd" ]; then
-        initrd="$(realpath -q '${IMAGE_ROOTFS}/boot/initrd.img')"
+        initrd="$(realpath -q '${IMAGE_ROOTFS}/boot/initrd.img' || true)"
     fi
     if [ -f "$initrd" ]; then
         cp -f "$initrd" '${DEPLOY_DIR_IMAGE}/${INITRD_IMAGE}'
@@ -369,7 +369,7 @@ do_copy_boot_files() {
 
     for file in ${DTB_FILES}; do
         dtb="$(find '${IMAGE_ROOTFS}/usr/lib' -type f \
-                    -iwholename '*linux-image-*/'${file} | head -1)"
+                    -iwholename '*linux-image-*/'${file} | head -1 || true)"
 
         if [ -z "$dtb" -o ! -e "$dtb" ]; then
             die "${file} not found"
