@@ -15,6 +15,8 @@ PV = "1.0"
 
 BOOTSTRAP_FOR_HOST ?= "0"
 
+# SSTATE_SKIP_CREATION ?= "1"
+
 DEBOOTSTRAP ?= "qemu-debootstrap"
 ROOTFSDIR = "${WORKDIR}/rootfs"
 APTPREFS = "${WORKDIR}/apt-preferences"
