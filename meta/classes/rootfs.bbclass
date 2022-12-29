@@ -345,6 +345,7 @@ rootfs_install_sstate_finalize() {
 }
 
 python do_rootfs_install_setscene() {
-    sstate_setscene(d)
+    if not sstate_setscene(d):
+        do_rootfs_install(d)
 }
-addtask do_rootfs_install_setscene
+#addtask rootfs_install_setscene before do_rootfs_install after do_rootfs_install_sstate_prepare
