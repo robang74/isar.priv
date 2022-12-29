@@ -796,6 +796,7 @@ def sstate_setscene(d):
     if not accelerate:
         msg = "No sstate archive obtainable, will run full task instead."
         bb.warn(msg)
+        return 1
         raise bb.BBHandledException(msg)
 
 python sstate_task_prefunc () {

@@ -332,4 +332,4 @@ rootfs_install_sstate_finalize() {
 python do_rootfs_install_setscene() {
     sstate_setscene(d)
 }
-addtask do_rootfs_install_setscene
+addtask do_rootfs_install_setscene before do_rootfs_install
