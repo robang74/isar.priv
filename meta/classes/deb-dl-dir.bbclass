@@ -84,7 +84,6 @@ deb_dl_dir_import() {
     flock -s "${pc}".lock -c '
         set -e
         printenv | grep -q BB_VERBOSE_LOGS && set -x
-
         sudo find "${pc}" -type f -iname "*\.deb" -exec \
             ln -Pf -t "${rootfs}"/var/cache/apt/archives/ {} +
     '
@@ -97,12 +96,11 @@ deb_dl_dir_export() {
     flock "${pc}".lock -c '
         set -e
         printenv | grep -q BB_VERBOSE_LOGS && set -x
-
         find "${rootfs}"/var/cache/apt/archives/ \
             -maxdepth 1 -type f -iname '*\.deb' |\
         while read p; do
             # skip files from a previous export
-            [ -f "${pc}/${p##*/}" ] && continue
+            [ -e "${pc}/${p##*/}" ] && continue
             # can not reuse bitbake function here, this is basically
             # "repo_contains_package"
             package=$(find "${REPO_ISAR_DIR}"/"${DISTRO}" -name ${p##*/})
