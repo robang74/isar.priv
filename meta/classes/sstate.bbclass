@@ -789,13 +789,13 @@ def pstaging_fetch(sstatefetch, d):
 
 pstaging_fetch[vardepsexclude] += "SRCPV"
 
-
 def sstate_setscene(d):
     shared_state = sstate_state_fromvars(d)
     accelerate = sstate_installpkg(shared_state, d)
     if not accelerate:
         msg = "No sstate archive obtainable, will run full task instead."
         bb.warn(msg)
+        return 1
         raise bb.BBHandledException(msg)
 
 python sstate_task_prefunc () {
