@@ -15,6 +15,8 @@ PV = "1.0"
 
 BOOTSTRAP_FOR_HOST ?= "0"
 
+# SSTATE_SKIP_CREATION ?= "1"
+
 DEBOOTSTRAP ?= "qemu-debootstrap"
 ROOTFSDIR = "${WORKDIR}/rootfs"
 APTPREFS = "${WORKDIR}/apt-preferences"
@@ -419,7 +421,8 @@ SSTATEPOSTINSTFUNCS += "bootstrap_sstate_finalize"
 
 bootstrap_sstate_prepare() {
     # this runs in SSTATE_BUILDDIR, which will be deleted automatically
-    sudo tar -C $(dirname "${ROOTFSDIR}") -cpSf bootstrap.tar --one-file-system $(basename "${ROOTFSDIR}")
+    lopts="--one-file-system --exclude-caches --exclude=var/cache/apt/archives"
+    sudo tar -C $(dirname "${ROOTFSDIR}") -cpSf bootstrap.tar $lopts $(basename "${ROOTFSDIR}")
     sudo chown $(id -u):$(id -g) bootstrap.tar
 }
 
