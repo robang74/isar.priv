@@ -11,6 +11,7 @@ ROOTFS_BASE_DISTRO ?= "${BASE_DISTRO}"
 # Features of the rootfs creation:
 # available features are:
 # 'clean-package-cache' - delete package cache from rootfs
+# 'clean-package-lists' - delete package lists from rootfs
 # 'generate-manifest' - generate a package manifest of the rootfs into ${ROOTFS_MANIFEST_DEPLOY_DIR}
 # 'export-dpkg-status' - exports /var/lib/dpkg/status file to ${ROOTFS_DPKGSTATUS_DEPLOY_DIR}
 # 'clean-log-files' - delete log files that are not owned by packages
@@ -115,7 +116,7 @@ rootfs_configure_apt() {
 EOSUDO
 }
 
-ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_update"
+#ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_update"
 rootfs_install_pkgs_update[weight] = "5"
 rootfs_install_pkgs_update[isar-apt-lock] = "acquire-before"
 rootfs_install_pkgs_update[network] = "1"
@@ -203,11 +204,14 @@ python do_rootfs_install() {
         if (d.getVarFlag(cmd, 'isar-apt-lock') or "") == "acquire-before":
             lock = bb.utils.lockfile(d.getVar("REPO_ISAR_DIR") + "/isar.lock",
                                      shared=True)
+        else:
+            lock = ""
 
         bb.build.exec_func(cmd, d)
 
         if (d.getVarFlag(cmd, 'isar-apt-lock') or "") == "release-after":
-            bb.utils.unlockfile(lock)
+            if (lock != ""):
+                bb.utils.unlockfile(lock)
     progress_reporter.finish()
 }
 addtask rootfs_install before do_rootfs_postprocess after do_unpack
@@ -237,6 +241,10 @@ ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'clean-pa
 rootfs_postprocess_clean_package_cache() {
     sudo -E chroot '${ROOTFSDIR}' \
         /usr/bin/apt-get clean
+}
+
+ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'clean-package-lists', 'rootfs_postprocess_clean_package_lists', '', d)}"
+rootfs_postprocess_clean_package_lists() {
     sudo rm -rf "${ROOTFSDIR}/var/lib/apt/lists/"*
 }
 
