@@ -59,9 +59,10 @@ python __anonymous() {
 ROOTFS_ARCH:class-sdk = "${HOST_ARCH}"
 ROOTFS_DISTRO:class-sdk = "${HOST_DISTRO}"
 ROOTFS_PACKAGES:class-sdk = "sdk-files ${TOOLCHAIN} ${SDK_PREINSTALL} ${SDK_INSTALL}"
-ROOTFS_FEATURES:append:class-sdk = " clean-package-cache generate-manifest export-dpkg-status"
+ROOTFS_FEATURES:append:class-sdk = " clean-package-cache clean-package-lists generate-manifest export-dpkg-status"
 ROOTFS_MANIFEST_DEPLOY_DIR:class-sdk = "${DEPLOY_DIR_SDKCHROOT}"
 ROOTFS_DPKGSTATUS_DEPLOY_DIR:class-sdk = "${DEPLOY_DIR_SDKCHROOT}"
+ROOTFS_INSTALL_COMMAND:prepend:class-sdk = "rootfs_install_pkgs_update"
 
 IMAGE_FSTYPES:class-sdk = "${SDK_FORMATS}"
 
