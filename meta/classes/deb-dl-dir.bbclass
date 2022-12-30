@@ -85,7 +85,7 @@ deb_dl_dir_import() {
         set -e
         printenv | grep -q BB_VERBOSE_LOGS && set -x
         find "${pc}" -type f -iname "*\.deb" -exec \
-            ln -Pf -t "${rootfs}"/var/cache/apt/archives/ {} +
+            ln -Pf -t "${rootfs}"/var/cache/apt/archives/ {} + 2>/dev/null || :
 EOSUDO
 }
 
@@ -108,8 +108,7 @@ deb_dl_dir_export() {
             if [ -n "$package" ]; then
                 cmp --silent "$package" "$p" && continue
             fi
-            ln -Pf "${p}" "${pc}" 2>/dev/null ||
-                cp -n "${p}" "${pc}"
+            ln -P "${p}" "${pc}" 2>/dev/null || :
         done
         chown -R ${owner} "${pc}"
 EOSUDO
