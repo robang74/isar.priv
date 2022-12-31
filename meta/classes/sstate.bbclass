@@ -789,7 +789,6 @@ def pstaging_fetch(sstatefetch, d):
 
 pstaging_fetch[vardepsexclude] += "SRCPV"
 
-
 def sstate_setscene(d):
     shared_state = sstate_state_fromvars(d)
     accelerate = sstate_installpkg(shared_state, d)
