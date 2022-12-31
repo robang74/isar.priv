@@ -17,9 +17,11 @@ ROOTFS_BASE_DISTRO ?= "${BASE_DISTRO}"
 # 'clean-log-files' - delete log files that are not owned by packages
 ROOTFS_FEATURES ?= ""
 
-ROOTFS_APT_ARGS="install --yes -o Debug::pkgProblemResolver=yes"
+ROOTFS_CLEAN_APT_CACHE ?= ""
 
-ROOTFS_CLEAN_FILES="/etc/hostname /etc/resolv.conf"
+ROOTFS_APT_ARGS = "install --yes -o Debug::pkgProblemResolver=yes"
+
+ROOTFS_CLEAN_FILES = "/etc/hostname /etc/resolv.conf"
 
 ROOTFS_PACKAGE_SUFFIX ?= "${PN}-${DISTRO}-${DISTRO_ARCH}"
 
@@ -175,6 +177,12 @@ rootfs_install_pkgs_install() {
         /usr/bin/apt-get ${ROOTFS_APT_ARGS} ${ROOTFS_PACKAGES}
 }
 
+ROOTFS_INSTALL_COMMAND += "${@ 'rootfs_clean_package_cache' if (d.getVar('ROOTFS_CLEAN_APT_CACHE') or '').strip() else ''}"
+rootfs_clean_package_cache[weight] = "5"
+rootfs_clean_package_cache() {
+    sudo -E chroot "${ROOTFSDIR}" /usr/bin/apt-get clean
+}
+
 do_rootfs_install[root_cleandirs] = "${ROOTFSDIR}"
 do_rootfs_install[vardeps] += "${ROOTFS_CONFIGURE_COMMAND} ${ROOTFS_INSTALL_COMMAND}"
 do_rootfs_install[vardepsexclude] += "IMAGE_ROOTFS"
@@ -236,8 +244,7 @@ cache_deb_src() {
 
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'clean-package-cache', 'rootfs_postprocess_clean_package_cache', '', d)}"
 rootfs_postprocess_clean_package_cache() {
-    sudo -E chroot '${ROOTFSDIR}' \
-        /usr/bin/apt-get clean
+    sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get clean
 }
 
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'clean-package-lists', 'rootfs_postprocess_clean_package_lists', '', d)}"
