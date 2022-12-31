@@ -294,6 +294,7 @@ do_bootstrap() {
 
     sudo rm -rf --one-file-system "${ROOTFSDIR}"
     deb_dl_dir_import "${ROOTFSDIR}" "${BOOTSTRAP_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
+    deb_lists_dir_import "${ROOTFSDIR}" "${BOOTSTRAP_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
 
     sudo -E -s <<'EOSUDO'
         set -e
@@ -319,6 +320,7 @@ do_bootstrap() {
         fi
 
         # Install apt config
+        rm -f "${ROOTFSDIR}/etc/apt/sources.list"
         mkdir -p "${ROOTFSDIR}/etc/apt/preferences.d"
         install -v -m644 "${APTPREFS}" \
                          "${ROOTFSDIR}/etc/apt/preferences.d/bootstrap"
@@ -342,8 +344,6 @@ do_bootstrap() {
                              "${ROOTFSDIR}/etc/apt/sources.list.d/bootstrap.list"
         fi
         install -v -m644 "${APTSRCS_INIT}" "${ROOTFSDIR}/etc/apt/sources-list"
-        rm -f "${ROOTFSDIR}/etc/apt/sources.list"
-        rm -rf "${ROOTFSDIR}/var/lib/apt/lists/"*
         find ${APT_KEYS_DIR}/ -type f | while read keyfile
         do
             MY_GPGHOME="$(chroot "${ROOTFSDIR}" mktemp -d /tmp/gpghomeXXXXXXXXXX)"
@@ -410,6 +410,7 @@ do_bootstrap() {
         # Finalize debootstrap by setting the link in deploy
         ln -Tfsr "${ROOTFSDIR}" "${DEPLOY_ISAR_BOOTSTRAP}"
 EOSUDO
+    deb_lists_dir_export "${ROOTFSDIR}" "${BOOTSTRAP_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
     deb_dl_dir_export "${ROOTFSDIR}" "${BOOTSTRAP_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
 
     # Cleanup apt cache suggested by Uladzimir Bely
