@@ -432,6 +432,11 @@ do_rootfs_finalize() {
             "${ROOTFSDIR}/etc/apt/sources.list.d/bootstrap.list"
 
         rm -f "${ROOTFSDIR}/etc/apt/sources-list"
+
+	BTROOTFS="${TMPDIR}/work/${DISTRO}-${DISTRO_ARCH}/buildchroot-target"
+	for i in $(ls -1d ${BTROOTFS}/*/rootfs/ 2>/dev/null || true); do
+		chroot $i /usr/bin/apt-get clean || true
+	done
 EOSUDO
 }
 addtask rootfs_finalize before do_rootfs after do_rootfs_postprocess
