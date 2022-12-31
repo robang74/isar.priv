@@ -21,7 +21,7 @@ ROOTFS_PACKAGES = "${BUILDCHROOT_PREINSTALL}"
 ROOTFS_CLEAN_FILES = ""
 ROOTFS_MANIFEST_DEPLOY_DIR = "${DEPLOY_DIR_BUILDCHROOT}"
 ROOTFS_DPKGSTATUS_DEPLOY_DIR = "${DEPLOY_DIR_BUILDCHROOT}"
-ROOTFS_FEATURES += " clean-package-cache generate-manifest export-dpkg-status"
+ROOTFS_FEATURES += " generate-manifest export-dpkg-status"
 
 BUILDCHROOT_COMPAT_PREINSTALL:compat-arch = " \
     libc6:${COMPAT_DISTRO_ARCH} \
@@ -68,7 +68,6 @@ buildchroot_install_files() {
     USER_ID=$(id -u)
     GROUP_ID=$(id -g)
     sudo chroot ${BUILDCHROOT_DIR} /configscript.sh $USER_ID $GROUP_ID
-
 }
 
 DEPLOY_BUILDCHROOT = "${@d.getVar('BUILDCHROOT_' + d.getVar('BUILDCHROOT_VARIANT').upper() + '_DIR')}"
