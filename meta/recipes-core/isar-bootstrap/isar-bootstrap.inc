@@ -297,6 +297,8 @@ do_bootstrap() {
 
     sudo -E -s <<'EOSUDO'
         set -e
+        # RAF, TODO: enable the use of the proxy instead of disabling it
+        unset http_proxy https_proxy ftp_proxy no_proxy
         if [ "${BOOTSTRAP_FOR_HOST}" = "0" ]; then
             arch_param="--arch=${DISTRO_ARCH}"
         fi
