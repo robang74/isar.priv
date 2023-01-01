@@ -104,7 +104,7 @@ deb_lists_dir_export() {
         while read p; do
             # skip files from a previous export
             [ -e "${pc}/${p##*/}" ] && continue
-            sudo ln -P "${p}" "${pc}" 2>/dev/null || :
+            sudo ln -Pf "${p}" "${pc}" 2>/dev/null || :
         done
         sudo chown -R $(id -u):$(id -g) "${pc}"
     '
