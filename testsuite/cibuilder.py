@@ -54,7 +54,7 @@ class CIBuilder(Test):
 
     def configure(self, compat_arch=True, cross=None, debsrc_cache=False,
                   container=False, ccache=False, sstate=False, offline=False,
-                  gpg_pub_key=None, wic_deploy_parts=False, **kwargs):
+                  gpg_pub_key=None, wic_deploy_parts=False, source_date_epoch=None, **kwargs):
         # write configuration file and set bitbake_args
         # can run multiple times per test case
         self.check_init()
@@ -78,6 +78,7 @@ class CIBuilder(Test):
                       f'  sstate = {sstate}\n'
                       f'  gpg_pub_key = {gpg_pub_key}\n'
                       f'  wic_deploy_parts = {wic_deploy_parts}\n'
+                      f'  source_date_epoch = {source_date_epoch} \n'
                       f'===================================================')
 
         # determine bitbake_args
@@ -90,7 +91,6 @@ class CIBuilder(Test):
         # write ci_build.conf
         with open(self.build_dir + '/conf/ci_build.conf', 'w') as f:
             if compat_arch:
-                f.write('ISAR_ENABLE_COMPAT_ARCH:amd64 = "1"\n')
                 f.write('ISAR_ENABLE_COMPAT_ARCH:arm64 = "1"\n')
                 f.write('IMAGE_INSTALL += "kselftest"\n')
             if cross:
@@ -112,6 +112,8 @@ class CIBuilder(Test):
             if ccache:
                 f.write('USE_CCACHE = "1"\n')
                 f.write('CCACHE_TOP_DIR = "${TOPDIR}/ccache"\n')
+            if source_date_epoch:
+                f.write('SOURCE_DATE_EPOCH = "%s"\n' % source_date_epoch)
 
         # include ci_build.conf in local.conf
         with open(self.build_dir + '/conf/local.conf', 'r+') as f:
@@ -228,7 +230,25 @@ class CIBuilder(Test):
         self.log.info('QEMU boot line: ' + str(cmdline))
 
         login_prompt = b'isar login:'
-        service_prompt = b'Just an example'
+        # the printk of recipes-kernel/example-module
+        module_output = b'Just an example'
+        resize_output = None
+
+        bb_output = start_vm.get_bitbake_env(arch, distro).decode()
+        image_fstypes = start_vm.get_bitbake_var(bb_output, 'IMAGE_FSTYPES')
+        wks_file = start_vm.get_bitbake_var(bb_output, 'WKS_FILE')
+        # only the first type will be tested in start_vm.py
+        if image_fstypes.split()[0] == 'wic':
+            if wks_file:
+                bbdistro = start_vm.get_bitbake_var(bb_output, 'DISTRO')
+                # ubuntu is less verbose so we do not see the message
+                # /etc/sysctl.d/10-console-messages.conf
+                if bbdistro and "ubuntu" not in bbdistro:
+                    if "sdimage-efi-sd" in wks_file:
+                        # output we see when expand-on-first-boot runs on ext4
+                        resize_output = b'resized filesystem to'
+                    if "sdimage-efi-btrfs" in wks_file:
+                        resize_output = b': resize device '
 
         timeout = time.time() + int(time_to_wait)
 
@@ -262,9 +282,12 @@ class CIBuilder(Test):
         if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
             with open(output_file, "rb") as f1:
                 data = f1.read()
-                if service_prompt in data and login_prompt in data:
-                    return
-                else:
-                    app_log.error(data.decode(errors='replace'))
+                if module_output in data and login_prompt in data:
+                    if resize_output:
+                        if resize_output in data:
+                            return
+                    else:
+                        return
+                app_log.error(data.decode(errors='replace'))
 
         self.fail('Log ' + output_file)

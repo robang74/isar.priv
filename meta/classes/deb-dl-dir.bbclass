@@ -76,29 +76,65 @@ debsrc_download() {
     debsrc_undo_mounts "${rootfs}"
 }
 
-deb_dl_dir_import() {
-    export pc="${DEBDIR}/${2}"
+deb_lists_dir_import() {
+    export dn="var/lib/apt/lists/"
+    export pc="${DEBDIR}/lists/${2}"
     export rootfs="${1}"
-    sudo mkdir -p "${rootfs}"/var/cache/apt/archives/
+    sudo mkdir -p "${rootfs}/${dn}"
     [ ! -d "${pc}" ] && return 0
     flock -s "${pc}".lock -c '
         set -e
         printenv | grep -q BB_VERBOSE_LOGS && set -x
-        sudo touch "${rootfs}"/var/cache/apt/archives/CACHEDIR.TAG
+        sudo find "${pc}" -type f -not -name lock -maxdepth 1 -exec \
+            ln -Pf -t "${rootfs}/${dn}" {} + 2>/dev/null || :
+        sudo chown -R root:root "${rootfs}/${dn}"/*
+    '
+}
+
+deb_lists_dir_export() {
+    export dn="var/lib/apt/lists/"
+    export pc="${DEBDIR}/lists/${2}"
+    export rootfs="${1}"
+    mkdir -p "${pc}"
+    flock "${pc}".lock -c '
+        set -e
+        printenv | grep -q BB_VERBOSE_LOGS && set -x
+        find "${rootfs}/${dn}" \
+            -type f -not -name lock -maxdepth 1 |\
+        while read p; do
+            # skip files from a previous export
+            [ -e "${pc}/${p##*/}" ] && continue
+            sudo ln -Pf "${p}" "${pc}" 2>/dev/null || :
+        done
+        sudo chown -R $(id -u):$(id -g) "${pc}"
+    '
+}
+
+deb_dl_dir_import() {
+    export dn="var/cache/apt/archives/"
+    export pc="${DEBDIR}/${2}"
+    export rootfs="${1}"
+    sudo mkdir -p "${rootfs}/${dn}"
+    [ ! -d "${pc}" ] && return 0
+    flock -s "${pc}".lock -c '
+        set -e
+        printenv | grep -q BB_VERBOSE_LOGS && set -x
+        sudo touch "${rootfs}/${dn}/CACHEDIR.TAG"
         sudo find "${pc}" -type f -iname "*\.deb" -exec \
-            ln -Pf -t "${rootfs}"/var/cache/apt/archives/ {} + 2>/dev/null || :
+            ln -Pf -t "${rootfs}/${dn}" {} + 2>/dev/null || :
     '
 }
 
 deb_dl_dir_export() {
+    export dn="var/cache/apt/archives/"
     export pc="${DEBDIR}/${2}"
     export rootfs="${1}"
     mkdir -p "${pc}"
     flock "${pc}".lock -c '
         set -e
         printenv | grep -q BB_VERBOSE_LOGS && set -x
-        sudo touch "${rootfs}"/var/cache/apt/archives/CACHEDIR.TAG
-        find "${rootfs}"/var/cache/apt/archives/ \
+        sudo touch "${rootfs}/${dn}/CACHEDIR.TAG"
+        find "${rootfs}/${dn}" \
             -maxdepth 1 -type f -iname '*\.deb' |\
         while read p; do
             # skip files from a previous export
