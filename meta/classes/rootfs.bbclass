@@ -234,8 +234,7 @@ cache_deb_src() {
 
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'clean-package-cache', 'rootfs_postprocess_clean_package_cache', '', d)}"
 rootfs_postprocess_clean_package_cache() {
-    sudo -E chroot '${ROOTFSDIR}' \
-        /usr/bin/apt-get clean
+    sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get -y clean
     sudo rm -rf "${ROOTFSDIR}/var/lib/apt/lists/"*
     # remove apt-cache folder itself (required in case rootfs is provided by sstate cache)
     sudo rm -rf "${ROOTFSDIR}/var/cache/apt/archives"
