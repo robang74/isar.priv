@@ -64,6 +64,17 @@ DEPENDS += "${IMAGE_INSTALL}"
 ISAR_RELEASE_CMD_DEFAULT = "git -C ${LAYERDIR_core} describe --tags --dirty --match 'v[0-9].[0-9]*'"
 ISAR_RELEASE_CMD ?= "${ISAR_RELEASE_CMD_DEFAULT}"
 
+image_do_mounts() {
+    set -x
+    sudo flock ${MOUNT_LOCKFILE} -c ' \
+        mkdir -p "${BUILDROOT_DEPLOY}" "${BUILDROOT_ROOTFS}" "${BUILDROOT_WORK}"
+        mount --bind "${DEPLOY_DIR_IMAGE}" "${BUILDROOT_DEPLOY}"
+        mount --bind "${IMAGE_ROOTFS}" "${BUILDROOT_ROOTFS}"
+        mount --bind "${WORKDIR}" "${BUILDROOT_WORK}"
+    '
+    buildchroot_do_mounts
+}
+
 ROOTFSDIR = "${IMAGE_ROOTFS}"
 ROOTFS_FEATURES += "clean-package-cache clean-pycache generate-manifest export-dpkg-status clean-log-files clean-debconf-cache"
 ROOTFS_PACKAGES += "${IMAGE_PREINSTALL} ${IMAGE_INSTALL}"
