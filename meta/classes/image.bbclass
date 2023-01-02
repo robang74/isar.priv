@@ -419,15 +419,13 @@ do_rootfs_finalize() {
         mountpoint -q '${ROOTFSDIR}/sys' && \
             umount -l ${ROOTFSDIR}/sys
 
-        rm -f "${ROOTFSDIR}/etc/apt/sources.list.d/isar-apt.list"
-        rm -f "${ROOTFSDIR}/etc/apt/preferences.d/isar-apt"
-        rm -f "${ROOTFSDIR}/etc/apt/sources.list.d/base-apt.list"
-        rm -f "${ROOTFSDIR}/etc/apt/apt.conf.d/50isar"
-
-        mv "${ROOTFSDIR}/etc/apt/sources-list" \
-            "${ROOTFSDIR}/etc/apt/sources.list.d/bootstrap.list"
-
-        rm -f "${ROOTFSDIR}/etc/apt/sources-list"
+        aptdir="${ROOTFSDIR}/etc/apt"
+        rm -f "${aptdir}/apt.conf.d/50isar"
+        rm -f "${aptdir}/preferences.d/isar-apt"
+        rm -f "${aptdir}/sources.list.d/isar-apt.list"
+        rm -f "${aptdir}/sources.list.d/base-apt.list"
+        mv -f "${aptdir}/sources-list" \
+            "${aptdir}/sources.list.d/bootstrap.list" 2>/dev/null || :
 EOSUDO
 }
 addtask rootfs_finalize before do_rootfs after do_rootfs_postprocess
