@@ -428,10 +428,11 @@ do_rootfs_finalize() {
         rm -f "${ROOTFSDIR}/etc/apt/sources.list.d/base-apt.list"
         rm -f "${ROOTFSDIR}/etc/apt/apt.conf.d/50isar"
 
-        mv "${ROOTFSDIR}/etc/apt/sources-list" \
-            "${ROOTFSDIR}/etc/apt/sources.list.d/bootstrap.list"
-
-        rm -f "${ROOTFSDIR}/etc/apt/sources-list"
+        if [ -e "${ROOTFSDIR}/etc/apt/sources-list" ]; then
+            mv  "${ROOTFSDIR}/etc/apt/sources-list" \
+                "${ROOTFSDIR}/etc/apt/sources.list.d/bootstrap.list" || :
+            rm  "${ROOTFSDIR}/etc/apt/sources-list" -f
+        fi
 
 	BTROOTFS="${TMPDIR}/work/${DISTRO}-${DISTRO_ARCH}/buildchroot-target"
 	for i in $(ls -1d ${BTROOTFS}/*/rootfs/ 2>/dev/null || true); do
