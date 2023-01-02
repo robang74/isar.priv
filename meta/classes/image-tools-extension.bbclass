@@ -54,20 +54,26 @@ do_start_imager_session[nostamp] = "1"
 do_start_imager_session[network] = "${TASK_USE_SUDO}"
 python do_start_imager_session() {
     import subprocess
-    bb.build.exec_func("schroot_create_configs", d)
-    bb.build.exec_func("insert_mounts", d)
+    udir = d.getVar("SCHROOT_OVERLAY_DIR", True)
     sbuild_chroot = d.getVar("SBUILD_CHROOT", True)
     session_id = d.getVar("IMAGER_SCHROOT_SESSION_ID", True)
+    bb.debug(2, "Removing %s/%s" % (udir, session_id))
+    subprocess.run("sudo rm -rf --one-file-system %s/%s" % (udir, session_id), shell=True)
+    bb.build.exec_func("schroot_create_configs", d)
+    bb.build.exec_func("insert_mounts", d)
     try:
         if subprocess.run("schroot -l --all-sessions | grep %s" % session_id, shell=True).returncode:
+            bb.debug(2, "Opening schroot session %s" % sbuild_chroot)
             subprocess.run("schroot -b -c %s -n %s" % (sbuild_chroot, session_id), shell=True, check=True)
             bb.debug(2, "Open schroot session %s" % session_id)
         else:
+            bb.debug(2, "Reusing schroot session %s" % sbuild_chroot)
             subprocess.run("schroot --recover-session -c %s" % session_id, shell=True, check=True)
             bb.debug(2, "Reuse schroot session %s" % session_id)
         d.setVar("SCHROOT_OPEN_SESSION_ID", session_id)
     except subprocess.CalledProcessError as err:
-        subprocess.run("schroot -e -c %s" % session_id, shell=True)
+        bb.debug(2, "Closing schroot start session %s (%s)" % (sbuild_chroot, session_id))
+        subprocess.run("schroot -fe -c %s" % session_id, shell=True)
         bb.build.exec_func("remove_mounts", d)
         bb.build.exec_func("schroot_delete_configs", d)
         bb.fatal("Could not create schroot session: %s" % err.output.decode('utf-8') if err.output else "")
@@ -83,11 +89,11 @@ python do_stop_imager_session() {
     try:
         id = subprocess.run("schroot -d / -r -c %s -- printenv -0 SCHROOT_ALIAS_NAME" % session_id,
                             shell=True, check=True, stdout=subprocess.PIPE).stdout.decode('utf-8')
-        bb.debug(2, "Close schroot session %s (%s)" % (session_id, id))
-        subprocess.run("schroot -e -c %s" % session_id, shell=True, check=True)
     except subprocess.CalledProcessError as err:
         bb.error("Could not close schroot session %s: %s" % (session_id, err.output.decode('utf-8')) if err.output else "")
     finally:
+        bb.debug(2, "Closing schroot stop session %s (%s)" % (session_id, id))
+        subprocess.run("schroot -fe -c %s" % session_id, shell=True)
         if 'id' in locals():
             d.setVar("SBUILD_CHROOT", id)
             bb.build.exec_func("remove_mounts", d)
