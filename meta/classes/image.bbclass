@@ -158,7 +158,7 @@ inherit ${IMGCLASSES}
 # convenience variables to be used by CMDs
 IMAGE_FILE_HOST = "${DEPLOY_DIR_IMAGE}/${IMAGE_FULLNAME}.${type}"
 IMAGE_FILE_CHROOT = "${PP_DEPLOY}/${IMAGE_FULLNAME}.${type}"
-SUDO_CHROOT = "sudo chroot ${BUILDCHROOT_DIR}"
+SUDO_CHROOT = "imager_run -d ${PP_ROOTFS} -u root --"
 
 # hook up IMAGE_CMD_*
 python() {
@@ -230,7 +230,6 @@ python() {
             imager_build_deps.add(dep)
 
         # construct image command
-        cmds.append('\timage_do_mounts')
         image_cmd = localdata.getVar('IMAGE_CMD:' + bt_clean)
         if image_cmd:
             localdata.setVar('type', bt)
