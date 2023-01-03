@@ -84,7 +84,6 @@ deb_dl_dir_import() {
     flock -s "${pc}".lock -c '
         set -e
         printenv | grep -q BB_VERBOSE_LOGS && set -x
-        sudo touch "${rootfs}"/var/cache/apt/archives/CACHEDIR.TAG
         sudo find "${pc}" -type f -iname "*\.deb" -exec \
             ln -Pf -t "${rootfs}"/var/cache/apt/archives/ {} + 2>/dev/null || :
     '
@@ -97,7 +96,6 @@ deb_dl_dir_export() {
     flock "${pc}".lock -c '
         set -e
         printenv | grep -q BB_VERBOSE_LOGS && set -x
-        sudo touch "${rootfs}"/var/cache/apt/archives/CACHEDIR.TAG
         find "${rootfs}"/var/cache/apt/archives/ \
             -maxdepth 1 -type f -iname '*\.deb' |\
         while read p; do
@@ -111,7 +109,6 @@ deb_dl_dir_export() {
             fi
             sudo ln -P "${p}" "${pc}" 2>/dev/null || :
         done
-        sudo touch "${pc}/CACHEDIR.TAG"
         sudo chown -R $(id -u):$(id -g) "${pc}"
     '
 }
