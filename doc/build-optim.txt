@@ -146,12 +146,6 @@ subtracted by the size of the image produced.
 Overall performances increased by a 2x fold with some clear great
 improvements in some specific dimensions (cache size) and cases.
 
-
-Final Results
--------------
-
-Here summuarised for the two opposite cases:
-
 	   original           full set
 	------------ basic-os -------------- ==============
 	43954 Mb (max)   |  3751 Mb (max)     9.58x  11.45x
@@ -170,4 +164,44 @@ Here summuarised for the two opposite cases:
 	11799 Mb (cache)  |   532 Mb (cache) 22.31x
 	time: 20m13s      | time: 12m18s      1.64x
 
+
+The schroot only
+----------------
+
+On the top of the patches listed aboce have been applyed 4 patches to migrate
+from buildchroot to schroot by Anton Mikanovich and 8 patches for improvment:
+
+* 0194961 - changes for a faster build using less disk space, p.7  (branch: schroot)
+* a8c7ff4 - changes for a faster build using less disk space, p.6
+* 3f825bb - sstate cache not anymore CACHEDIR.TAG but tar --exclude
+* 8857585 - deb-dl-dir deb_dl/lists_dir_im/export rationalisation, p2
+* 22e3b05 - image apt clean buildchroot moved to clean schroot insted
+* 632c4ec - image class bugfix: interuption does not break the rebuild
+* 9be4304 - image tools ext. class bugfix: interuption does not break the rebuild
+* 99817b7 - dpkg base class: use schroot only not buildchroot anymore
+
+* ecfec69 - events: Cleanup lost schroot sessions if any, v2
+* efa0994 - imager: Move image types to schroot, v2
+* bdb4169 - imager: Migrate from buildchroot to schroot, v2
+* 3f26709 - sbuild: Allow setting custom config paths, v2  (tag: schroot-only)
+
+Here summuarised for the two opposite cases, the new results:
+
+	   original            full set + schroot only
+	------------ basic-os -------------- ==============
+	43954 Mb (max)   |  3548 Mb (max)    12.40x  15.82x
+	26548 Mb (rest)  |  2570 Mb (rest)   10.34x  14.72x
+	 3741 Mb (deb)   |  3887 Mb (deb)      -
+	  820 Mb (wic)   |   820 Mb (wic)      -
+	11789 Mb (cache) |   235 Mb (cache)  50.17x
+	time: 8m33s      | time: 3m19s        2.58x
+
+	   original            full set + schroot only
+	------------ complete ------------- ==============
+	52507 Mb (max)   | 28655 Mb (max)    1.83x   2.22x
+	43311 Mb (rest)  | 19335 Mb (rest)   2.24x   3.36x
+	 3741 Mb (deb)   |  3887 Mb (deb)     -
+	 9159 Mb (wic)   |  9161 Mb (wic)     -
+	11799 Mb (cache) |   243 Mb (cache) 48.56x
+	time: 20m13s     | time: 12m15s      1.65x
 
