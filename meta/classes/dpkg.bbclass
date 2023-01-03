@@ -78,7 +78,7 @@ dpkg_runbuild() {
     ext_root="${PP}/rootfs"
     ext_deb_dir="${ext_root}${deb_dir}"
 
-    if [ ${USE_CCACHE} -eq 1 ]; then
+    if [ ${USE_CCACHE:-0} -eq 1 ]; then
         schroot_configure_ccache
     fi
 
