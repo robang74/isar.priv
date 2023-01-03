@@ -25,6 +25,8 @@ do_prepare_build:append() {
     env > ${DPKG_PREBUILD_ENV_FILE}
 }
 
+DPKG_SBUILD_EXTRA_ARGS ?= ""
+
 # Build package from sources using build script
 dpkg_runbuild[vardepsexclude] += "${SBUILD_PASSTHROUGH_ADDITIONS}"
 dpkg_runbuild() {
@@ -112,6 +114,7 @@ dpkg_runbuild() {
         --chroot-setup-commands="rm -f /var/log/dpkg.log" \
         --chroot-setup-commands="mount -o bind ${ext_deb_dir} ${deb_dir}" \
         --chroot-setup-commands="export XZ_DEFAULTS='-T 8'" \
+        ${DPKG_SBUILD_EXTRA_ARGS} \
         --finished-build-commands="rm -f ${deb_dir}/sbuild-build-depends-main-dummy_*.deb" \
         --finished-build-commands="umount ${deb_dir}" \
         --finished-build-commands="cp /var/log/dpkg.log ${ext_root}/dpkg_partial.log" \
