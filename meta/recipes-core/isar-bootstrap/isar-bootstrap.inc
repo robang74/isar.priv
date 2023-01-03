@@ -411,7 +411,7 @@ do_bootstrap() {
 EOSUDO
     deb_dl_dir_export "${ROOTFSDIR}" "${BOOTSTRAP_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
 
-    sudo chroot "${ROOTFSDIR}" /usr/bin/apt-get -y clean
+    sudo -E chroot "${ROOTFSDIR}" /usr/bin/apt-get -y clean
 }
 
 addtask bootstrap before do_build after do_generate_keyrings
