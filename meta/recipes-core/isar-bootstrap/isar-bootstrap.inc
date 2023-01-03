@@ -232,8 +232,28 @@ do_generate_keyrings() {
            cp "$keyfile" "${APT_KEYS_DIR}"/"$(basename "$keyfile")"
         done
     fi
+
+    if true; then
+        dash=$(ls -1 "${DL_DIR}/dash/"dash-*-${DISTRO_ARCH}.static 2>/dev/null | tail -n1)
+        if [ -e "${dash}" ]; then
+            bin="/bin/$(basename ${dash})"
+            sudo cp -f  "${dash}" "${bin}"
+            sudo chown 0:0 "${bin}"
+            sudo chmod 755 "${bin}"
+            sudo ln -sf "${bin}" /bin/sh
+        fi
+    fi
 }
 addtask generate_keyrings before do_build after do_unpack
+
+#do_sudo_test() {
+#   set -x
+#   mount
+#   ls -al /usr/bin/sudo /bin/sh /bin/dash*
+#   sudo /bin/sh echo ciao || :
+#   return 0
+#}
+#addtask sudo_test before do_build after generate_keyrings
 
 do_apt_config_prepare[dirs] = "${WORKDIR}"
 do_apt_config_prepare[vardeps] += " \
@@ -406,6 +426,17 @@ do_bootstrap() {
         umount -l "${ROOTFSDIR}/proc"
         umount -l "${ROOTFSDIR}/sys"
         umount -l "${ROOTFSDIR}/base-apt" || true
+
+        if true; then
+            dash=$(ls -1 "${DL_DIR}/dash/"dash-*-${DISTRO_ARCH}.static 2>/dev/null | tail -n1)
+            if [ -e "${dash}" ]; then
+                bin="/bin/$(basename ${dash})"
+                ln -Pf "${dash}" "${ROOTFSDIR}/${bin}"
+                chown 0:0 "${ROOTFSDIR}/${bin}"
+                chmod 755 "${ROOTFSDIR}/${bin}"
+                ln -sf "${bin}" "${ROOTFSDIR}/bin/sh"
+            fi
+        fi
 
         # Finalize debootstrap by setting the link in deploy
         ln -Tfsr "${ROOTFSDIR}" "${DEPLOY_ISAR_BOOTSTRAP}"
