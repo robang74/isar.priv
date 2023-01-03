@@ -3,6 +3,8 @@
 
 inherit dpkg-base
 
+ISAR_CROSS_COMPILE ?= "0"
+
 PACKAGE_ARCH ?= "${DISTRO_ARCH}"
 
 DPKG_PREBUILD_ENV_FILE="${WORKDIR}/dpkg_prebuild.env"
@@ -70,14 +72,15 @@ dpkg_runbuild() {
         distro="${HOST_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
     fi
 
-    deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}"  nolists
-
     deb_dir="/var/cache/apt/archives"
     ext_root="${PP}/rootfs"
     ext_deb_dir="${ext_root}${deb_dir}"
 
     if [ ${USE_CCACHE} -eq 1 ]; then
+        deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}"
         schroot_configure_ccache
+    else
+        deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}" nolists
     fi
 
     profiles="${@ isar_deb_build_profiles(d)}"
@@ -116,7 +119,11 @@ dpkg_runbuild() {
         --build-dir=${WORKDIR} --dist="isar" ${DSC_FILE}
 
     sbuild_dpkg_log_export "${WORKDIR}/rootfs/dpkg_partial.log"
-    deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}" nolists
+    if [ ${USE_CCACHE} -eq 1 ]; then
+        deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}"
+    else
+        deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}" ${USE_CCACHE:-nolists}
+    fi
 
     # Cleanup apt artifacts
     sudo rm -rf ${WORKDIR}/rootfs

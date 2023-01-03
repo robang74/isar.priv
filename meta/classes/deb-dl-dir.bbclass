@@ -1,6 +1,8 @@
 # This software is a part of ISAR.
 # Copyright (C) 2020 Siemens AG
 #
+# Partial rework by Roberto A. Foglietta <roberto.foglietta@gmail.com>
+#
 # SPDX-License-Identifier: MIT
 
 inherit repository
@@ -75,18 +77,23 @@ debsrc_download() {
     debsrc_undo_mounts "${rootfs}"
 }
 
+##### REWORK #####
+
 deb_dl_dir_import() {
+    nol="${3}"
     apc="${DEBDIR}/${2}"
     adn="${1}/var/cache/apt/archives/"
     bdn="${1}/var/lib/apt/lists/"
     bpc="${DEBDIR}/lists/${2}"
-    export adn bdn apc bpc
+    export adn bdn apc bpc nol
     flock -s "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
         set -e
 
         mkdir -p "${adn}" && test -d "${adn}"
         find "${apc}" -maxdepth 1 -type f -iname "*\.deb" \
             -exec ln -Pf -t "${adn}" {} + 2>/dev/null || :
+
+        test "${nol}" = "nolists" && exit 0
 
         mkdir -p "${bdn}" && test -d "${bdn}"
         find "${bpc}" -type f -not -name lock -maxdepth 1 -not -name \
@@ -97,11 +104,12 @@ EOSUDO'
 }
 
 deb_dl_dir_export() {
+    nol="${3}"
     apc="${DEBDIR}/${2}"
     adn="${1}/var/cache/apt/archives/"
     bdn="${1}/var/lib/apt/lists/"
     bpc="${DEBDIR}/lists/${2}"
-    export adn bdn apc bpc
+    export adn bdn apc bpc nol
     flock "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
         set -e
 
@@ -109,6 +117,8 @@ deb_dl_dir_export() {
         find "${adn}" -maxdepth 1 -type f -iname '*\.deb' |\
             -exec ln -P -t "${apc}" {} + 2>/dev/null || :
         chown -R $(id -u):$(id -g) "${apc}"
+
+        test "${nol}" = "nolists" && exit 0
 
         mkdir -p "${bpc}" && test -d "${bpc}"
         find "${bdn}" -type f -not -name lock -maxdepth 1 -not -name \
