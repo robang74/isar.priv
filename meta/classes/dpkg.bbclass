@@ -71,6 +71,7 @@ dpkg_runbuild() {
     fi
 
     deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}"
+    deb_lists_dir_import "${WORKDIR}/rootfs" "${distro}"
 
     deb_dir="/var/cache/apt/archives"
     ext_root="${PP}/rootfs"
@@ -116,6 +117,7 @@ dpkg_runbuild() {
         --build-dir=${WORKDIR} --dist="isar" ${DSC_FILE}
 
     sbuild_dpkg_log_export "${WORKDIR}/rootfs/dpkg_partial.log"
+    deb_lists_dir_export "${WORKDIR}/rootfs" "${distro}"
     deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}"
 
     # Cleanup apt artifacts
