@@ -52,7 +52,6 @@ debsrc_download() {
 
     ( flock 9
     set -e
-    printenv | grep -q BB_VERBOSE_LOGS && set -x
     find "${rootfs}/var/cache/apt/archives/" -maxdepth 1 -type f -iname '*\.deb' | while read package; do
         is_not_part_of_current_build "${package}" && continue
         # Get source package name if available, fallback to package name
@@ -76,70 +75,44 @@ debsrc_download() {
     debsrc_undo_mounts "${rootfs}"
 }
 
-deb_lists_dir_import() {
-    export rootfs="${1}"
-    export pc="${DEBDIR}/lists/${2}"
-    export dn="${rootfs}/var/lib/apt/lists/"
-    sudo mkdir -p "${dn}"
-    [ ! -d "${pc}" ] && return 0
-    flock -s "${pc}".lock -c 'sudo -s << EOSUDO
-        set -e
-        printenv | grep -q BB_VERBOSE_LOGS && set -x
-        find "${pc}" -type f -not -name lock -maxdepth 1 \
-            -not -name _isar-apt\* -exec ln -Pf -t "${dn}" {} + 2>/dev/null || :
-        chown -R root:root "${dn}"
-EOSUDO'
-}
-
-deb_lists_dir_export() {
-    export rootfs="${1}"
-    export pc="${DEBDIR}/lists/${2}"
-    export dn="${rootfs}/var/lib/apt/lists/"
-    mkdir -p "${pc}"
-    flock "${pc}".lock -c 'sudo -s << EOSUDO
-        set -e
-        printenv | grep -q BB_VERBOSE_LOGS && set -x
-        find "${dn}" -type f -not -name lock -maxdepth 1 \
-            -not -name _isar-apt\* -exec ln -Pf -t "${pc}" {} + 2>/dev/null || :
-        chown -R $(id -u):$(id -g) "${pc}"
-EOSUDO'
-}
-
 deb_dl_dir_import() {
-    export rootfs="${1}"
-    export pc="${DEBDIR}/${2}"
-    export dn="${rootfs}/var/cache/apt/archives/"
-    sudo mkdir -p "${dn}"
-    [ ! -d "${pc}" ] && return 0
-    flock -s "${pc}".lock -c 'sudo -s << EOSUDO
+    apc="${DEBDIR}/${2}"
+    adn="${1}/var/cache/apt/archives/"
+    bdn="${1}/var/lib/apt/lists/"
+    bpc="${DEBDIR}/lists/${2}"
+    export adn bdn apc bpc
+    flock -s "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
         set -e
-        printenv | grep -q BB_VERBOSE_LOGS && set -x
-        find "${pc}" -type f -iname "*\.deb" -exec \
-            ln -Pf -t "${dn}" {} + 2>/dev/null || :
+
+        mkdir -p "${adn}" && test -d "${adn}"
+        find "${apc}" -maxdepth 1 -type f -iname "*\.deb" \
+            -exec ln -Pf -t "${adn}" {} + 2>/dev/null || :
+
+        mkdir -p "${bdn}" && test -d "${bdn}"
+        find "${bpc}" -type f -not -name lock -maxdepth 1 -not -name \
+            _isar-apt\* -exec ln -Pf -t "${bdn}" {} + 2>/dev/null || :
+        chown -R root:root "${bdn}"
+
 EOSUDO'
 }
 
 deb_dl_dir_export() {
-    export rootfs="${1}"
-    export pc="${DEBDIR}/${2}"
-    export dn="${rootfs}/var/cache/apt/archives/"
-    mkdir -p "${pc}"
-    flock "${pc}".lock -c 'sudo -s << EOSUDO
+    apc="${DEBDIR}/${2}"
+    adn="${1}/var/cache/apt/archives/"
+    bdn="${1}/var/lib/apt/lists/"
+    bpc="${DEBDIR}/lists/${2}"
+    export adn bdn apc bpc
+    flock "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
         set -e
-        printenv | grep -q BB_VERBOSE_LOGS && set -x
-        find "${dn}" \
-            -maxdepth 1 -type f -iname '*\.deb' |\
-        while read p; do
-            # skip files from a previous export
-            [ -e "${pc}/${p##*/}" ] && continue
-            # can not reuse bitbake function here, this is basically
-            # "repo_contains_package"
-            package=$(find "${REPO_ISAR_DIR}"/"${DISTRO}" -name ${p##*/})
-            if [ -n "$package" ]; then
-                cmp --silent "$package" "$p" && continue
-            fi
-            ln -P "${p}" "${pc}" 2>/dev/null || :
-        done
-        chown -R $(id -u):$(id -g) "${pc}"
+
+        mkdir -p "${apc}" && test -d "${apc}"
+        find "${adn}" -maxdepth 1 -type f -iname '*\.deb' |\
+            -exec ln -P -t "${apc}" {} + 2>/dev/null || :
+        chown -R $(id -u):$(id -g) "${apc}"
+
+        mkdir -p "${bpc}" && test -d "${bpc}"
+        find "${bdn}" -type f -not -name lock -maxdepth 1 -not -name \
+            _isar-apt\* -exec ln -Pf -t "${bpc}" {} + 2>/dev/null || :
+        chown -R $(id -u):$(id -g) "${bpc}"
 EOSUDO'
 }
