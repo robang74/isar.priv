@@ -105,7 +105,6 @@ rootfs_configure_apt[weight] = "2"
 rootfs_configure_apt() {
     sudo -s <<'EOSUDO'
     set -e
-
     mkdir -p '${ROOTFSDIR}/etc/apt/apt.conf.d'
     {
         echo 'Acquire::Retries "3";'
@@ -343,11 +342,14 @@ rootfs_install_sstate_prepare() {
     # tar --one-file-system will cross bind-mounts to the same filesystem,
     # so we use some mount magic to prevent that
     mkdir -p ${WORKDIR}/mnt/rootfs
-    sudo mount --bind ${WORKDIR}/rootfs ${WORKDIR}/mnt/rootfs -o ro
-    lopts="--one-file-system --exclude=var/cache/apt/archives"
-    sudo tar -C ${WORKDIR}/mnt -cpSf rootfs.tar $lopts rootfs
-    sudo umount ${WORKDIR}/mnt/rootfs
-    sudo chown $(id -u):$(id -g) rootfs.tar
+    sudo -s << EOSUDO
+        set -e
+        mount --bind ${WORKDIR}/rootfs ${WORKDIR}/mnt/rootfs -o ro
+        sudo tar --one-file-system ${ROOTFS_TAR_EXCLUDE_OPTS} \
+            -C ${WORKDIR}/mnt -cpSf rootfs.tar rootfs
+        umount ${WORKDIR}/mnt/rootfs
+        chown $(id -u):$(id -g) rootfs.tar
+EOSUDO
 }
 do_rootfs_install_sstate_prepare[lockfiles] = "${REPO_ISAR_DIR}/isar.lock"
 
