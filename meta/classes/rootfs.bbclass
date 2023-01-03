@@ -181,7 +181,7 @@ rootfs_install_pkgs_install() {
 ROOTFS_INSTALL_COMMAND += "${@ 'rootfs_clean_package_cache' if (d.getVar('ROOTFS_CLEAN_APT_CACHE') or '').strip() else ''}"
 rootfs_clean_package_cache[weight] = "5"
 rootfs_clean_package_cache() {
-    sudo -E chroot "${ROOTFSDIR}" /usr/bin/apt-get clean
+    sudo -E chroot "${ROOTFSDIR}" /usr/bin/apt-get -y clean
 }
 
 do_rootfs_install[root_cleandirs] = "${ROOTFSDIR}"
@@ -248,7 +248,7 @@ cache_deb_src() {
 
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'clean-package-cache', 'rootfs_postprocess_clean_package_cache', '', d)}"
 rootfs_postprocess_clean_package_cache() {
-    sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get clean
+    sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get -y clean
 }
 
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'clean-package-lists', 'rootfs_postprocess_clean_package_lists', '', d)}"

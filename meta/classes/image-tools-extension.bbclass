@@ -46,7 +46,7 @@ do_install_imager_deps() {
             --allow-unauthenticated --allow-downgrades install \
             ${IMAGER_INSTALL}'
 
-    sudo chroot ${SCHROOT_DIR} /usr/bin/apt-get clean
+    sudo -E chroot ${SCHROOT_DIR} /usr/bin/apt-get -y clean
 }
 addtask install_imager_deps before do_image_tools after do_start_imager_session
 
