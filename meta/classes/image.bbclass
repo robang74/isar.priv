@@ -158,7 +158,7 @@ inherit ${IMGCLASSES}
 # convenience variables to be used by CMDs
 IMAGE_FILE_HOST = "${DEPLOY_DIR_IMAGE}/${IMAGE_FULLNAME}.${type}"
 IMAGE_FILE_CHROOT = "${PP_DEPLOY}/${IMAGE_FULLNAME}.${type}"
-SUDO_CHROOT = "sudo chroot ${BUILDCHROOT_DIR}"
+SUDO_CHROOT = "imager_run -d ${PP_ROOTFS} -u root --"
 
 # hook up IMAGE_CMD_*
 python() {
@@ -230,7 +230,6 @@ python() {
             imager_build_deps.add(dep)
 
         # construct image command
-        cmds.append('\timage_do_mounts')
         image_cmd = localdata.getVar('IMAGE_CMD:' + bt_clean)
         if image_cmd:
             localdata.setVar('type', bt)
@@ -297,6 +296,7 @@ python() {
         d.appendVarFlag(task, 'vardeps', ' ' + ' '.join(vardeps))
         d.appendVarFlag(task, 'vardepsexclude', ' ' + ' '.join(vardepsexclude))
         d.appendVarFlag(task, 'dirs', localdata.expand(' ${DEPLOY_DIR_IMAGE}'))
+        d.appendVarFlag(task, 'deptask', ' do_start_imager_session')
         if task_deps:
             d.appendVarFlag(task, 'depends', task_deps)
         bb.build.addtask(task, 'do_image', after, d)
@@ -428,15 +428,11 @@ do_rootfs_finalize() {
         rm -f "${ROOTFSDIR}/etc/apt/sources.list.d/base-apt.list"
         rm -f "${ROOTFSDIR}/etc/apt/apt.conf.d/50isar"
 
-        mv "${ROOTFSDIR}/etc/apt/sources-list" \
-            "${ROOTFSDIR}/etc/apt/sources.list.d/bootstrap.list"
-
-        rm -f "${ROOTFSDIR}/etc/apt/sources-list"
-
-	BTROOTFS="${TMPDIR}/work/${DISTRO}-${DISTRO_ARCH}/buildchroot-target"
-	for i in $(ls -1d ${BTROOTFS}/*/rootfs/ 2>/dev/null || true); do
-		chroot $i /usr/bin/apt-get clean || true
-	done
+        if [ -e "${ROOTFSDIR}/etc/apt/sources-list" ]; then
+            mv  "${ROOTFSDIR}/etc/apt/sources-list" \
+                "${ROOTFSDIR}/etc/apt/sources.list.d/bootstrap.list" || :
+            rm  "${ROOTFSDIR}/etc/apt/sources-list" -f
+        fi
 EOSUDO
 }
 addtask rootfs_finalize before do_rootfs after do_rootfs_postprocess

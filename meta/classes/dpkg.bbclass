@@ -3,6 +3,8 @@
 
 inherit dpkg-base
 
+ISAR_CROSS_COMPILE ?= "0"
+
 PACKAGE_ARCH ?= "${DISTRO_ARCH}"
 
 DPKG_PREBUILD_ENV_FILE="${WORKDIR}/dpkg_prebuild.env"
@@ -22,6 +24,9 @@ def expand_sbuild_pt_additions(d):
 do_prepare_build:append() {
     env > ${DPKG_PREBUILD_ENV_FILE}
 }
+
+DPKG_SBUILD_EXTRA_ARGS_PRE ?= ""
+DPKG_SBUILD_EXTRA_ARGS_POST ?= ""
 
 # Build package from sources using build script
 dpkg_runbuild[vardepsexclude] += "${SBUILD_PASSTHROUGH_ADDITIONS}"
@@ -70,14 +75,15 @@ dpkg_runbuild() {
         distro="${HOST_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
     fi
 
-    deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}"
-
     deb_dir="/var/cache/apt/archives"
     ext_root="${PP}/rootfs"
     ext_deb_dir="${ext_root}${deb_dir}"
 
     if [ ${USE_CCACHE} -eq 1 ]; then
+        deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}"
         schroot_configure_ccache
+    else
+        deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}" nolists
     fi
 
     profiles="${@ isar_deb_build_profiles(d)}"
@@ -104,19 +110,23 @@ dpkg_runbuild() {
     sbuild -A -n -c ${SBUILD_CHROOT} --extra-repository="${ISAR_APT_REPO}" \
         --host=${PACKAGE_ARCH} --build=${SBUILD_HOST_ARCH} ${profiles} \
         --no-run-lintian --no-run-piuparts --no-run-autopkgtest --resolve-alternatives \
-        --no-apt-update \
+        --no-apt-update ${DPKG_SBUILD_EXTRA_ARGS_PRE} \
         --chroot-setup-commands="echo \"Package: *\nPin: release n=${DEBDISTRONAME}\nPin-Priority: 1000\" > /etc/apt/preferences.d/isar-apt" \
         --chroot-setup-commands="echo \"APT::Get::allow-downgrades 1;\" > /etc/apt/apt.conf.d/50isar-apt" \
-        --chroot-setup-commands="rm -f /var/log/dpkg.log; touch ${deb_dir}/CACHEDIR.TAG" \
+        --chroot-setup-commands="rm -f /var/log/dpkg.log" \
         --chroot-setup-commands="ln -Pf ${ext_deb_dir}/*.deb -t ${deb_dir}/ 2>/dev/null || :" \
         --finished-build-commands="rm -f ${deb_dir}/sbuild-build-depends-main-dummy_*.deb" \
         --finished-build-commands="ln -P ${deb_dir}/*.deb -t ${ext_deb_dir}/ 2>/dev/null || :" \
-        --finished-build-commands="cp /var/log/dpkg.log ${ext_root}/dpkg_partial.log; touch ${ext_deb_dir}/CACHEDIR.TAG" \
-        --debbuildopts="--source-option=-I" \
+        --finished-build-commands="cp /var/log/dpkg.log ${ext_root}/dpkg_partial.log" \
+        --debbuildopts="--source-option=-I" ${DPKG_SBUILD_EXTRA_ARGS_POST} \
         --build-dir=${WORKDIR} --dist="isar" ${DSC_FILE}
 
     sbuild_dpkg_log_export "${WORKDIR}/rootfs/dpkg_partial.log"
-    deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}"
+    if [ ${USE_CCACHE} -eq 1 ]; then
+        deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}"
+    else
+        deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}" ${USE_CCACHE:-nolists}
+    fi
 
     # Cleanup apt artifacts
     sudo rm -rf ${WORKDIR}/rootfs

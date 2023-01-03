@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 
 inherit sbuild
-inherit buildchroot
+#inherit buildchroot
 inherit debianize
 inherit terminal
 inherit repository
@@ -125,7 +125,7 @@ do_apt_fetch[lockfiles] += "${REPO_ISAR_DIR}/isar.lock"
 do_apt_fetch[network] = "1"
 
 # Add dependency from the correct buildchroot: host or target
-do_apt_fetch[depends] += "${BUILDCHROOT_DEP}"
+#do_apt_fetch[depends] += "${BUILDCHROOT_DEP}"
 
 # Add dependency from the correct schroot: host or target
 do_apt_fetch[depends] += "${SCHROOT_DEP}"
@@ -196,7 +196,7 @@ dpkg_do_mounts() {
     mkdir -p ${BUILDROOT}
     sudo mount --bind ${WORKDIR} ${BUILDROOT}
 
-    buildchroot_do_mounts
+#   buildchroot_do_mounts
 }
 
 dpkg_undo_mounts() {
