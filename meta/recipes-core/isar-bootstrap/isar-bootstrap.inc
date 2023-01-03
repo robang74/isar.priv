@@ -294,7 +294,6 @@ do_bootstrap() {
 
     sudo rm -rf --one-file-system "${ROOTFSDIR}"
     deb_dl_dir_import "${ROOTFSDIR}" "${BOOTSTRAP_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
-    deb_lists_dir_import "${ROOTFSDIR}" "${BOOTSTRAP_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
 
     sudo -E -s <<'EOSUDO'
         set -e
@@ -410,11 +409,9 @@ do_bootstrap() {
         # Finalize debootstrap by setting the link in deploy
         ln -Tfsr "${ROOTFSDIR}" "${DEPLOY_ISAR_BOOTSTRAP}"
 EOSUDO
-    deb_lists_dir_export "${ROOTFSDIR}" "${BOOTSTRAP_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
     deb_dl_dir_export "${ROOTFSDIR}" "${BOOTSTRAP_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
 
-    # Cleanup apt cache suggested by Uladzimir Bely
-    sudo -Es chroot "${ROOTFSDIR}" /usr/bin/apt-get -y clean
+    sudo chroot "${ROOTFSDIR}" /usr/bin/apt-get -y clean
 }
 
 addtask bootstrap before do_build after do_generate_keyrings

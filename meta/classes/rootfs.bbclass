@@ -140,8 +140,7 @@ rootfs_install_resolvconf() {
 ROOTFS_INSTALL_COMMAND += "rootfs_import_package_cache"
 rootfs_import_package_cache[weight] = "5"
 rootfs_import_package_cache() {
-    deb_dl_dir_import ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
-    deb_lists_dir_import ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
+    deb_dl_dir_import "${ROOTFSDIR}" "${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
 }
 
 ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_download"
@@ -159,8 +158,7 @@ ROOTFS_INSTALL_COMMAND += "${ROOTFS_INSTALL_COMMAND_BEFORE_EXPORT}"
 ROOTFS_INSTALL_COMMAND += "rootfs_export_package_cache"
 rootfs_export_package_cache[weight] = "5"
 rootfs_export_package_cache() {
-    deb_dl_dir_export ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
-    deb_lists_dir_export ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
+    deb_dl_dir_export "${ROOTFSDIR}" "${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
 }
 
 ROOTFS_INSTALL_COMMAND += "${@ 'rootfs_install_clean_files' if (d.getVar('ROOTFS_CLEAN_FILES') or '').strip() else ''}"
@@ -181,7 +179,7 @@ rootfs_install_pkgs_install() {
 ROOTFS_INSTALL_COMMAND += "${@ 'rootfs_clean_package_cache' if (d.getVar('ROOTFS_CLEAN_APT_CACHE') or '').strip() else ''}"
 rootfs_clean_package_cache[weight] = "5"
 rootfs_clean_package_cache() {
-    sudo -E chroot "${ROOTFSDIR}" /usr/bin/apt-get clean
+    sudo -E chroot "${ROOTFSDIR}" /usr/bin/apt-get -y clean
 }
 
 do_rootfs_install[root_cleandirs] = "${ROOTFSDIR}"
@@ -236,8 +234,8 @@ cache_deb_src() {
     # which generates a new state from upstream.
     sudo cp -Trpn --reflink=auto "${BOOTSTRAP_SRC}/var/lib/apt/lists/" "${ROOTFSDIR}/var/lib/apt/lists/"
 
-    deb_dl_dir_import ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
-    debsrc_download ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
+    deb_dl_dir_import "${ROOTFSDIR}" "${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
+    debsrc_download "${ROOTFSDIR}" "${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
 
     sudo rm -f "${ROOTFSDIR}"/etc/resolv.conf
     if [ -e "${ROOTFSDIR}"/etc/resolv.conf.isar ] ||
@@ -248,7 +246,7 @@ cache_deb_src() {
 
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'clean-package-cache', 'rootfs_postprocess_clean_package_cache', '', d)}"
 rootfs_postprocess_clean_package_cache() {
-    sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get clean
+    sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get -y clean
 }
 
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'clean-package-lists', 'rootfs_postprocess_clean_package_lists', '', d)}"
@@ -273,7 +271,7 @@ rootfs_postprocess_clean_debconf_cache() {
 
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'generate-manifest', 'rootfs_generate_manifest', '', d)}"
 rootfs_generate_manifest () {
-    mkdir -p ${ROOTFS_MANIFEST_DEPLOY_DIR}
+    mkdir -p "${ROOTFS_MANIFEST_DEPLOY_DIR}"
     sudo -E chroot --userspec=$(id -u):$(id -g) '${ROOTFSDIR}' \
         dpkg-query -W -f \
             '${source:Package}|${source:Version}|${binary:Package}|${Version}\n' > \
@@ -282,7 +280,7 @@ rootfs_generate_manifest () {
 
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'export-dpkg-status', 'rootfs_export_dpkg_status', '', d)}"
 rootfs_export_dpkg_status() {
-    mkdir -p ${ROOTFS_DPKGSTATUS_DEPLOY_DIR}
+    mkdir -p "${ROOTFS_DPKGSTATUS_DEPLOY_DIR}"
     cp '${ROOTFSDIR}'/var/lib/dpkg/status \
        '${ROOTFS_DPKGSTATUS_DEPLOY_DIR}'/'${ROOTFS_PACKAGE_SUFFIX}'.dpkg_status
 }
@@ -326,13 +324,13 @@ rootfs_install_sstate_prepare() {
     # this runs in SSTATE_BUILDDIR, which will be deleted automatically
     # tar --one-file-system will cross bind-mounts to the same filesystem,
     # so we use some mount magic to prevent that
-    mkdir -p ${WORKDIR}/mnt/rootfs
+    mkdir -p "${WORKDIR}/mnt/rootfs"
     sudo -s << EOSUDO
-        mount --bind ${WORKDIR}/rootfs ${WORKDIR}/mnt/rootfs -o ro
+        mount --bind "${WORKDIR}/rootfs" "${WORKDIR}/mnt/rootfs" -o ro
         sudo tar --one-file-system --exclude="var/log/*" --exclude="var/cache/*" --exclude="var/backups/*" \
             --exclude="var/tmp/*" --exclude="var/crash/*" --exclude="var/spool/*" --exclude="var/lib/apt/*" \
-            --exclude-caches --exclude-backups -C ${WORKDIR}/mnt -cpSf rootfs.tar rootfs
-        umount ${WORKDIR}/mnt/rootfs
+            --exclude-caches --exclude-backups -C "${WORKDIR}/mnt" -cpSf rootfs.tar rootfs
+        umount "${WORKDIR}/mnt/rootfs"
         chown $(id -u):$(id -g) rootfs.tar
 EOSUDO
 }
@@ -343,7 +341,7 @@ rootfs_install_sstate_finalize() {
     # - after building the rootfs, the tar won't be there, but we also don't need to unpack
     # - after restoring from cache, there will be a tar which we unpack and then delete
     if [ -f rootfs.tar ]; then
-        sudo tar -C ${WORKDIR} -xpf rootfs.tar
+        sudo tar -C "${WORKDIR}" -xpf rootfs.tar
         rm rootfs.tar
     fi
 }
