@@ -328,8 +328,7 @@ do_bootstrap() {
                              "${ROOTFSDIR}/etc/apt/sources.list.d/bootstrap.list"
         fi
         install -v -m644 "${APTSRCS_INIT}" "${ROOTFSDIR}/etc/apt/sources-list"
-        rm -f "${ROOTFSDIR}/etc/apt/sources.list"
-        rm -rf "${ROOTFSDIR}/var/lib/apt/lists/"*
+
         find ${APT_KEYS_DIR}/ -type f | while read keyfile
         do
             MY_GPGHOME="$(chroot "${ROOTFSDIR}" mktemp -d /tmp/gpghomeXXXXXXXXXX)"
