@@ -82,13 +82,13 @@ deb_lists_dir_import() {
     export dn="${rootfs}/var/lib/apt/lists/"
     sudo mkdir -p "${dn}"
     [ ! -d "${pc}" ] && return 0
-    flock -s "${pc}".lock -c '
+    flock -s "${pc}".lock -c 'sudo -s << EOSUDO
         set -e
         printenv | grep -q BB_VERBOSE_LOGS && set -x
-        sudo find "${pc}" -type f -not -name lock -maxdepth 1 \
-            -exec ln -Pf -t "${dn}" {} + 2>/dev/null || :
-        sudo chown -R root:root "${dn}"
-    '
+        find "${pc}" -type f -not -name lock -maxdepth 1 \
+            -not -name _isar-apt\* -exec ln -Pf -t "${dn}" {} + 2>/dev/null || :
+        chown -R root:root "${dn}"
+EOSUDO'
 }
 
 deb_lists_dir_export() {
@@ -96,13 +96,13 @@ deb_lists_dir_export() {
     export pc="${DEBDIR}/lists/${2}"
     export dn="${rootfs}/var/lib/apt/lists/"
     mkdir -p "${pc}"
-    flock "${pc}".lock -c '
+    flock "${pc}".lock -c 'sudo -s << EOSUDO
         set -e
         printenv | grep -q BB_VERBOSE_LOGS && set -x
-        sudo find "${dn}" -type f -not -name lock -maxdepth 1 \
-            -exec ln -Pf -t "${pc}" {} + 2>/dev/null || :
-        sudo chown -R $(id -u):$(id -g) "${pc}"
-    '
+        find "${dn}" -type f -not -name lock -maxdepth 1 \
+            -not -name _isar-apt\* -exec ln -Pf -t "${pc}" {} + 2>/dev/null || :
+        chown -R $(id -u):$(id -g) "${pc}"
+EOSUDO'
 }
 
 deb_dl_dir_import() {
@@ -111,13 +111,12 @@ deb_dl_dir_import() {
     export dn="${rootfs}/var/cache/apt/archives/"
     sudo mkdir -p "${dn}"
     [ ! -d "${pc}" ] && return 0
-    flock -s "${pc}".lock -c '
+    flock -s "${pc}".lock -c 'sudo -s << EOSUDO
         set -e
-        sudo touch "${dn}/CACHEDIR.TAG"
         printenv | grep -q BB_VERBOSE_LOGS && set -x
-        sudo find "${pc}" -type f -iname "*\.deb" -exec \
+        find "${pc}" -type f -iname "*\.deb" -exec \
             ln -Pf -t "${dn}" {} + 2>/dev/null || :
-    '
+EOSUDO'
 }
 
 deb_dl_dir_export() {
@@ -125,9 +124,8 @@ deb_dl_dir_export() {
     export pc="${DEBDIR}/${2}"
     export dn="${rootfs}/var/cache/apt/archives/"
     mkdir -p "${pc}"
-    flock "${pc}".lock -c '
+    flock "${pc}".lock -c 'sudo -s << EOSUDO
         set -e
-        sudo touch "${dn}/CACHEDIR.TAG"
         printenv | grep -q BB_VERBOSE_LOGS && set -x
         find "${dn}" \
             -maxdepth 1 -type f -iname '*\.deb' |\
@@ -140,9 +138,8 @@ deb_dl_dir_export() {
             if [ -n "$package" ]; then
                 cmp --silent "$package" "$p" && continue
             fi
-            sudo ln -P "${p}" "${pc}" 2>/dev/null || :
+            ln -P "${p}" "${pc}" 2>/dev/null || :
         done
-        sudo touch "${pc}/CACHEDIR.TAG"
-        sudo chown -R $(id -u):$(id -g) "${pc}"
-    '
+        chown -R $(id -u):$(id -g) "${pc}"
+EOSUDO'
 }
