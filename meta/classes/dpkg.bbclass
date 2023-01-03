@@ -70,14 +70,13 @@ dpkg_runbuild() {
         distro="${HOST_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
     fi
 
-    deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}"
-    deb_lists_dir_import "${WORKDIR}/rootfs" "${distro}"
-
     deb_dir="/var/cache/apt/archives"
     ext_root="${PP}/rootfs"
     ext_deb_dir="${ext_root}${deb_dir}"
 
+    deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}"
     if [ ${USE_CCACHE} -eq 1 ]; then
+        deb_lists_dir_import "${WORKDIR}/rootfs" "${distro}"
         schroot_configure_ccache
     fi
 
@@ -108,17 +107,19 @@ dpkg_runbuild() {
         --no-apt-update \
         --chroot-setup-commands="echo \"Package: *\nPin: release n=${DEBDISTRONAME}\nPin-Priority: 1000\" > /etc/apt/preferences.d/isar-apt" \
         --chroot-setup-commands="echo \"APT::Get::allow-downgrades 1;\" > /etc/apt/apt.conf.d/50isar-apt" \
-        --chroot-setup-commands="rm -f /var/log/dpkg.log; touch ${deb_dir}/CACHEDIR.TAG" \
+        --chroot-setup-commands="rm -f /var/log/dpkg.log" \
         --chroot-setup-commands="ln -Pf ${ext_deb_dir}/*.deb -t ${deb_dir}/ 2>/dev/null || :" \
         --finished-build-commands="rm -f ${deb_dir}/sbuild-build-depends-main-dummy_*.deb" \
         --finished-build-commands="ln -P ${deb_dir}/*.deb -t ${ext_deb_dir}/ 2>/dev/null || :" \
-        --finished-build-commands="cp /var/log/dpkg.log ${ext_root}/dpkg_partial.log; touch ${ext_deb_dir}/CACHEDIR.TAG" \
+        --finished-build-commands="cp /var/log/dpkg.log ${ext_root}/dpkg_partial.log" \
         --debbuildopts="--source-option=-I" \
         --build-dir=${WORKDIR} --dist="isar" ${DSC_FILE}
 
     sbuild_dpkg_log_export "${WORKDIR}/rootfs/dpkg_partial.log"
-    deb_lists_dir_export "${WORKDIR}/rootfs" "${distro}"
     deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}"
+    if [ ${USE_CCACHE} -eq 1 ]; then
+        deb_lists_dir_export "${WORKDIR}/rootfs" "${distro}"
+    fi
 
     # Cleanup apt artifacts
     sudo rm -rf ${WORKDIR}/rootfs

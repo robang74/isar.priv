@@ -28,8 +28,8 @@ do_install_imager_deps() {
     fi
 
     E="${@ isar_export_proxies(d)}"
-    deb_dl_dir_import ${SCHROOT_DIR} ${distro}
-    deb_lists_dir_import ${SCHROOT_DIR} ${distro}
+    deb_dl_dir_import "${SCHROOT_DIR}" "${distro}"
+    deb_lists_dir_import "${SCHROOT_DIR}" "${distro}"
     schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
         apt-get update \
             -o Dir::Etc::SourceList="sources.list.d/isar-apt.list" \
@@ -38,15 +38,15 @@ do_install_imager_deps() {
         apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y \
             --allow-unauthenticated --allow-downgrades --download-only install \
             ${IMAGER_INSTALL}'
-    deb_lists_dir_export ${SCHROOT_DIR} ${distro}
-    deb_dl_dir_export ${SCHROOT_DIR} ${distro}
+    deb_lists_dir_export "${SCHROOT_DIR}" "${distro}"
+    deb_dl_dir_export "${SCHROOT_DIR}" "${distro}"
 
     schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
         apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y \
             --allow-unauthenticated --allow-downgrades install \
             ${IMAGER_INSTALL}'
 
-    sudo -E chroot ${SCHROOT_DIR} /usr/bin/apt-get -y clean
+    sudo -E chroot "${SCHROOT_DIR}" /usr/bin/apt-get -y clean
 }
 addtask install_imager_deps before do_image_tools after do_start_imager_session
 
