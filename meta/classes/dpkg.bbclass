@@ -23,6 +23,9 @@ do_prepare_build_append() {
     env > ${DPKG_PREBUILD_ENV_FILE}
 }
 
+DPKG_SBUILD_EXTRA_ARGS_PRE ?= ""
+DPKG_SBUILD_EXTRA_ARGS_POST ?= ""
+
 # Build package from sources using build script
 dpkg_runbuild[vardepsexclude] += "${SBUILD_PASSTHROUGH_ADDITIONS}"
 dpkg_runbuild() {
@@ -104,7 +107,7 @@ dpkg_runbuild() {
     sbuild -A -n -c ${SBUILD_CHROOT} --extra-repository="${ISAR_APT_REPO}" \
         --host=${PACKAGE_ARCH} --build=${SBUILD_HOST_ARCH} ${profiles} \
         --no-run-lintian --no-run-piuparts --no-run-autopkgtest --resolve-alternatives \
-        --no-apt-update \
+        --no-apt-update ${DPKG_SBUILD_EXTRA_ARGS_PRE} \
         --chroot-setup-commands="echo \"Package: *\nPin: release n=${DEBDISTRONAME}\nPin-Priority: 1000\" > /etc/apt/preferences.d/isar-apt" \
         --chroot-setup-commands="echo \"APT::Get::allow-downgrades 1;\" > /etc/apt/apt.conf.d/50isar-apt" \
         --chroot-setup-commands="rm -f /var/log/dpkg.log" \
@@ -112,7 +115,7 @@ dpkg_runbuild() {
         --finished-build-commands="rm -f ${deb_dir}/sbuild-build-depends-main-dummy_*.deb" \
         --finished-build-commands="cp -n --no-preserve=owner ${deb_dir}/*.deb -t ${ext_deb_dir}/ || :" \
         --finished-build-commands="cp /var/log/dpkg.log ${ext_root}/dpkg_partial.log" \
-        --debbuildopts="--source-option=-I" \
+        --debbuildopts="--source-option=-I" ${DPKG_SBUILD_EXTRA_ARGS_POST} \
         --build-dir=${WORKDIR} --dist="isar" ${DSC_FILE}
 
     sbuild_dpkg_log_export "${WORKDIR}/rootfs/dpkg_partial.log"
