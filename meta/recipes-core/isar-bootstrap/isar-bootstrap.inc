@@ -405,8 +405,9 @@ SSTATEPOSTINSTFUNCS += "bootstrap_sstate_finalize"
 
 bootstrap_sstate_prepare() {
     # this runs in SSTATE_BUILDDIR, which will be deleted automatically
-    lopts="--one-file-system --exclude=var/cache/apt/archives"
-    sudo tar -C $(dirname "${ROOTFSDIR}") -cpSf bootstrap.tar $lopts $(basename "${ROOTFSDIR}")
+    sudo tar --one-file-system --exclude="var/log/*" --exclude="var/cache/*" --exclude="var/backups/*" \
+        --exclude="var/tmp/*" --exclude="var/crash/*" --exclude="var/spool/*" --exclude="var/lib/apt/*" \
+        --exclude-caches --exclude-backups -C $(dirname "${ROOTFSDIR}") -cpSf bootstrap.tar $(basename "${ROOTFSDIR}")
     sudo chown $(id -u):$(id -g) bootstrap.tar
 }
 
