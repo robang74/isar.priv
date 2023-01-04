@@ -206,16 +206,18 @@ function for-all-other-branches() {
 
     noskip=""
     rpull="true"
-    if [ "x$1" == "x-p" ]; then
-        rpull="git pull"
+    while true; do
+        if [ "x$1" == "x-p" ]; then
+            rpull="git pull"
+        elif [ "x$1" == "x-r" ]; then
+            rpull="rpull"
+        elif [ "x$1" == "x-a" ]; then
+            noskip="1"
+        else
+            break
+        fi
         shift
-    elif [ "x$1" == "x-r" ]; then
-        rpull="rpull"
-        shift
-    elif [ "x$1" == "x-a" ]; then
-        noskip="1"
-        shift
-    fi
+    done
 
 	local cur=$(git branch --show-current)
     declare -i nbr=$(lsbr | wc -l)
