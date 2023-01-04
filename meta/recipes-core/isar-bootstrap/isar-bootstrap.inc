@@ -298,6 +298,7 @@ do_bootstrap() {
         if [ "${BOOTSTRAP_FOR_HOST}" = "0" ]; then
             arch_param="--arch=${DISTRO_ARCH}"
         fi
+
         ${DEBOOTSTRAP} $debootstrap_args \
                        $arch_param \
                        ${@get_distro_components_argument(d)} \
@@ -329,9 +330,9 @@ do_bootstrap() {
             install -v -m644 "${APTSRCS}" \
                              "${ROOTFSDIR}/etc/apt/sources.list.d/bootstrap.list"
         fi
-        install -v -m644 "${APTSRCS_INIT}" "${ROOTFSDIR}/etc/apt/sources-list"
         rm -f "${ROOTFSDIR}/etc/apt/sources.list"
-        rm -rf "${ROOTFSDIR}/var/lib/apt/lists/"*
+        install -v -m644 "${APTSRCS_INIT}" "${ROOTFSDIR}/etc/apt/sources-list"
+
         find ${APT_KEYS_DIR}/ -type f | while read keyfile
         do
             MY_GPGHOME="$(chroot "${ROOTFSDIR}" mktemp -d /tmp/gpghomeXXXXXXXXXX)"
