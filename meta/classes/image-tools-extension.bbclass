@@ -11,6 +11,8 @@ IMAGER_INSTALL ??= ""
 IMAGER_BUILD_DEPS ??= ""
 DEPENDS += "${IMAGER_BUILD_DEPS}"
 
+ISAR_CROSS_COMPILE ?= "0"
+
 IMAGER_SCHROOT_SESSION_ID = "isar-imager-${SCHROOT_USER}-${PN}-${MACHINE}-${ISAR_BUILD_UUID}"
 
 do_install_imager_deps[depends] = "${SCHROOT_DEP} isar-apt:do_cache_config"
@@ -58,29 +60,37 @@ do_start_imager_session[nostamp] = "1"
 do_start_imager_session[network] = "${TASK_USE_SUDO}"
 python do_start_imager_session() {
     import subprocess
-    udir = d.getVar("SCHROOT_OVERLAY_DIR", True)
-    sbuild_chroot = d.getVar("SBUILD_CHROOT", True)
-    session_id = d.getVar("IMAGER_SCHROOT_SESSION_ID", True)
-    bb.debug(2, "Removing %s/%s" % (udir, session_id))
-    subprocess.run("sudo rm -rf --one-file-system %s/%s" % (udir, session_id), shell=True)
-    bb.build.exec_func("schroot_create_configs", d)
-    bb.build.exec_func("insert_mounts", d)
-    try:
-        if subprocess.run("schroot -l --all-sessions | grep %s" % session_id, shell=True).returncode:
-            bb.debug(2, "Opening schroot session %s" % sbuild_chroot)
-            subprocess.run("schroot -b -c %s -n %s" % (sbuild_chroot, session_id), shell=True, check=True)
-            bb.debug(2, "Open schroot session %s" % session_id)
-        else:
-            bb.debug(2, "Reusing schroot session %s" % sbuild_chroot)
-            subprocess.run("schroot --recover-session -c %s" % session_id, shell=True, check=True)
-            bb.debug(2, "Reuse schroot session %s" % session_id)
-        d.setVar("SCHROOT_OPEN_SESSION_ID", session_id)
-    except subprocess.CalledProcessError as err:
-        bb.debug(2, "Closing schroot start session %s (%s)" % (sbuild_chroot, session_id))
-        subprocess.run("schroot -fe -c %s" % session_id, shell=True)
+
+    remove = 0
+    attempts = 0
+    while attempts < 2:
+        attempts += 1
+        sbuild_chroot = d.getVar("SBUILD_CHROOT", True)
+        session_id = d.getVar("IMAGER_SCHROOT_SESSION_ID", True)
+        bb.build.exec_func("schroot_create_configs", d)
+        bb.build.exec_func("insert_mounts", d)
+        bb.debug(2, "Opening schroot session %s" % sbuild_chroot)
+        if not subprocess.run("schroot -b -c %s -n %s" % (sbuild_chroot, session_id), shell=True).returncode:
+            attempts = 1
+            break
+        bb.debug(2, "Reusing schroot session %s" % sbuild_chroot)
+        if not subprocess.run("schroot --recover-session -c %s" % session_id, shell=True).returncode:
+            attempts = 1
+            break
+        udir = d.getVar("SCHROOT_OVERLAY_DIR", True)
+        bb.debug(2, "Closing schroot session %s (%s)" % (sbuild_chroot, session_id))
+        if subprocess.run("schroot -fe -c %s" % session_id, shell=True).returncode:
+            remove = 1
         bb.build.exec_func("remove_mounts", d)
         bb.build.exec_func("schroot_delete_configs", d)
-        bb.fatal("Could not create schroot session: %s" % err.output.decode('utf-8') if err.output else "")
+        if remove:
+            bb.debug(2, "Removing session dir: %s/%s" % (udir, session_id))
+            subprocess.run("sudo rm -rf --one-file-system %s/%s /var/lib/schroot/session/%s" % (udir, session_id, session_id), shell=True)
+
+    if(attempts > 1):
+        bb.fatal("Could not create schroot session: %s" % session_id)
+    d.setVar("SCHROOT_OPEN_SESSION_ID", session_id)
+    return 0
 }
 addtask start_imager_session before do_stop_imager_session after do_rootfs_finalize
 
