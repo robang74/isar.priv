@@ -255,7 +255,10 @@ function for-all-other-branches() {
             echo "branch: $i, KO"
             echo "fix the problem and then type exit"
             echo
-            PS1="${PS1::-1}git> " bash
+            gitrc=$(mktemp -p "$TMPDIR" gitrc.XXXX)
+            echo "PS1='+git> '" >"$gitrc"
+            bash --rcfile "$gitrc" -ri
+            rm -f "$gitrc"
         fi
 	done
     unset BRANCHES
