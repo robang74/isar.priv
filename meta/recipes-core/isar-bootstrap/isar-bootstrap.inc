@@ -297,6 +297,7 @@ do_bootstrap() {
 
     sudo -E -s <<'EOSUDO'
         set -e
+        alias wget="wget -c"
         if [ "${BOOTSTRAP_FOR_HOST}" = "0" ]; then
             arch_param="--arch=${DISTRO_ARCH}"
         fi
