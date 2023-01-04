@@ -204,14 +204,17 @@ function for-all-other-branches() {
         return 1
     fi
 
+    noskip=""
+    rpull="true"
     if [ "x$1" == "x-p" ]; then
         rpull="git pull"
         shift
     elif [ "x$1" == "x-r" ]; then
         rpull="rpull"
         shift
-    else
-        rpull="true"
+    elif [ "x$1" == "x-a" ]; then
+        noskip="1"
+        shift
     fi
 
 	local cur=$(git branch --show-current)
@@ -236,10 +239,10 @@ function for-all-other-branches() {
 
     git fetch origin || return $?
 
-    noskip=${BRANCHES}
+    noskip="${noskip}${BRANCHES}"
     BRANCHES=${BRANCHES:-$(lsbr)}
 	for i in ${BRANCHES}; do
-        test "$noskip" != "" && \
+        test "$noskip" == "" && \
             test "$i" == "$cur" && continue
         if ! git switch $i; then
             echo
