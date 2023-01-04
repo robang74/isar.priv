@@ -198,36 +198,27 @@ export -f lsbr
 function for-all-other-branches() {
     test "x$1" == "x" && return 1
 
-    warn=$(st | grep -e "^Changes [not]* ")
+    local warn=$(st | grep -e "^Changes [not]* ")
     if [ -n "$warn" ]; then
         echo "WARNING: changes pending, please stash or commit. Abort!" >&2
         return 1
     fi
 
-    noskip=""
-    rpull="true"
-    while true; do
-        if [ "x$1" == "x-p" ]; then
-            rpull="git pull"
-        elif [ "x$1" == "x-r" ]; then
-            rpull="rpull"
-        elif [ "x$1" == "x-a" ]; then
-            noskip="1"
-        else
-            break
-        fi
-        shift
-    done
+#   local sha=$(git rev-parse --short HEAD)
+    local cur=$(git branch --show-current)
+    if [ "$cur" == "" ]; then
+        echo "ERROR: this is not the HEAD of a branch. Abort!" >&2
+        return 1
+    fi
 
-	local cur=$(git branch --show-current)
     declare -i nbr=$(lsbr | wc -l)
-
     if [ $nbr -le 1 ]; then
         echo "DONE: there is only one branch '$cur' as current. Abort!" >&2
         return 0
     fi
+
     if echo "x$@" | grep -q "fpush"; then
-        echo "ERROR: fpush is not allowed for safety. Aborti!" >&2
+        echo "ERROR: fpush is not allowed for safety. Abort!" >&2
         return 1
     fi
     if echo "x$@" | grep -qe "push.*-f"; then
@@ -239,13 +230,24 @@ function for-all-other-branches() {
         return 1
     fi
 
+    local rpull="true"
+    while true; do
+        if [ "x$1" == "x-p" ]; then
+            rpull="git pull"
+        elif [ "x$1" == "x-r" ]; then
+            rpull="rpull"
+        elif [ "x$1" == "x-a" ]; then
+            BRANCHES=$(lsbr)
+        else
+            break
+        fi
+        shift
+    done
+
     git fetch origin || return $?
 
-    noskip="${noskip}${BRANCHES}"
-    BRANCHES=${BRANCHES:-$(lsbr)}
+    BRANCHES=${BRANCHES:-$(lsbr | grep -vwe "$cur")}
 	for i in ${BRANCHES}; do
-        test "$noskip" == "" && \
-            test "$i" == "$cur" && continue
         if ! git switch $i; then
             echo
             echo "branch:$i, SKIP"
