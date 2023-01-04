@@ -11,6 +11,8 @@ IMAGER_INSTALL ??= ""
 IMAGER_BUILD_DEPS ??= ""
 DEPENDS += "${IMAGER_BUILD_DEPS}"
 
+ISAR_CROSS_COMPILE ?= "0"
+
 IMAGER_SCHROOT_SESSION_ID = "isar-imager-${SCHROOT_USER}-${PN}-${MACHINE}-${ISAR_BUILD_UUID}"
 
 do_install_imager_deps[depends] = "${SCHROOT_DEP} isar-apt:do_cache_config"
