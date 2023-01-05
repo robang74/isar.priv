@@ -8,6 +8,8 @@
 # SPDX-License-Identifier: MIT
 #
 
+source "$(dirname $0)/colors.shell"
+
 function irebase() {
     test -z "$1" && return 1
     hash=$(git rev-list --parents -n2 "$1" | tail -n1 | head -c40)
@@ -206,33 +208,33 @@ function for-all-other-branches() {
 
     local warn=$(st | grep -e "^Changes [not]* ")
     if [ -n "$warn" ]; then
-        echo "WARNING: changes pending, please stash or commit. Abort!" >&2
+        echo -e "${WARNING}: changes pending, please stash or commit. Abort!" >&2
         return 1
     fi
 
 #   local sha=$(git rev-parse --short HEAD)
     local cur=$(git branch --show-current)
     if [ "$cur" == "" ]; then
-        echo "ERROR: this is not the HEAD of a branch. Abort!" >&2
+        echo -e "${ERROR}: this is not the HEAD of a branch. Abort!" >&2
         return 1
     fi
 
     declare -i nbr=$(lsbr | wc -l)
     if [ $nbr -le 1 ]; then
-        echo "DONE: there is only one branch '$cur' as current. Abort!" >&2
+        echo -e "${DONE}: there is only one branch '$cur' as current. Abort!" >&2
         return 0
     fi
 
     if echo "x$@" | grep -q "fpush"; then
-        echo "ERROR: fpush is not allowed for safety. Abort!" >&2
+        echo -e "${ERROR}: fpush is not allowed for safety. Abort!" >&2
         return 1
     fi
     if echo "x$@" | grep -qe "push.*-f"; then
-        echo "ERROR: push -f is not allowed for safety. Abort!" >&2
+        echo -e "${ERROR}: push -f is not allowed for safety. Abort!" >&2
         return 1
     fi
     if echo "x$@" | grep -q -- "--force"; then
-        echo "ERROR: option --force is not allowed for safety. Abort!" >&2
+        echo -e "${ERROR}: option --force is not allowed for safety. Abort!" >&2
         return 1
     fi
 
@@ -255,7 +257,7 @@ function for-all-other-branches() {
     if [ "$curdir" == "$topdir" ]; then
         true
     elif ! cd $(git rev-parse --show-toplevel); then
-        echo "ERROR: cannot change folder to the top level. Abort!" >&2
+        echo -e "${ERROR}: cannot change folder to the top level. Abort!" >&2
         return 1
     fi
     git fetch origin || return $?
@@ -264,23 +266,23 @@ function for-all-other-branches() {
 	for branch in ${BRANCHES}; do
         if ! git switch $branch; then
             echo
-            echo "branch: $branch, SKIP"
+            echo -e "${byellow}branch: $branch, SKIP${coloff}"
             echo "press ENTER to continue..."
             read
         elif eval "$rpull" && eval "$@"; then
             echo
-            echo "branch: $branch, OK"
+            echo -e "${bgreen}branch: $branch, OK${coloff}"
             echo
         else
             echo
-            echo "branch: $branch, KO"
+            echo -e "${bired}mbranch: $branch, KO${coloff}"
             echo "fix the problem and then type exit"
             echo "or type exit 1 to abort completely"
             echo
             local ret=0
             gitrc=$(mktemp -p "$TMPDIR" gitrc.XXXX)
             cat git.functions >"$gitrc"
-            echo "PS1='+git:'$branch'> '" >>"$gitrc"
+            echo "PS1='${bcyan}+git${coloff}:${byellow}'$branch'${coloff}> '" >>"$gitrc"
             if ! bash --rcfile "$gitrc" -ri; then
                 git switch $cur
                 rm -f "$gitrc"
@@ -290,8 +292,7 @@ function for-all-other-branches() {
         fi
 	done
     unset BRANCHES
-
-    git switch $cur
+    test "$cur" != "$branch" && git switch $cur
 }
 export -f for-all-other-branches
 
