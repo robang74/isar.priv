@@ -263,3 +263,9 @@ function for-all-other-branches() {
     git switch $cur
 }
 export -f for-all-other-branches
+
+function lgrp() {
+    local strn=$1; shift
+    lg "$@" | grep "$strn" | awk '{print $2}'
+}
+export -f lgrp
