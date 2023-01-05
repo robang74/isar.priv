@@ -267,7 +267,8 @@ function for-all-other-branches() {
             echo "fix the problem and then type exit"
             echo
             gitrc=$(mktemp -p "$TMPDIR" gitrc.XXXX)
-            echo "PS1='+git:'$branch'> '; source git.functions" >"$gitrc"
+            cat git.functions >"$gitrc"
+            echo "PS1='+git:'$branch'> '" >>"$gitrc"
             bash --rcfile "$gitrc" -ri
             rm -f "$gitrc"
         fi
