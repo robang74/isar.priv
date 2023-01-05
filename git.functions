@@ -265,11 +265,17 @@ function for-all-other-branches() {
             echo
             echo "branch: $branch, KO"
             echo "fix the problem and then type exit"
+            echo "or type exit 1 to abort completely"
             echo
+            local ret=0
             gitrc=$(mktemp -p "$TMPDIR" gitrc.XXXX)
             cat git.functions >"$gitrc"
             echo "PS1='+git:'$branch'> '" >>"$gitrc"
-            bash --rcfile "$gitrc" -ri
+            if ! bash --rcfile "$gitrc" -ri; then
+                git switch $cur
+                rm -f "$gitrc"
+                return 1
+            fi
             rm -f "$gitrc"
         fi
 	done
