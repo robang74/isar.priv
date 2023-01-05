@@ -244,6 +244,10 @@ function for-all-other-branches() {
         shift
     done
 
+    if ! pushd $(git rev-parse --show-toplevel); then
+        echo "ERROR: cannot change folder to the top level. Abort!" >&2
+        return 1
+    fi
     git fetch origin || return $?
 
     BRANCHES=${BRANCHES:-$(lsbr | grep -vwe "$cur")}
@@ -263,7 +267,7 @@ function for-all-other-branches() {
             echo "fix the problem and then type exit"
             echo
             gitrc=$(mktemp -p "$TMPDIR" gitrc.XXXX)
-            echo "PS1='+git:'$branch'> '" >"$gitrc"
+            echo "PS1='+git:'$branch'> '; source git.functions" >"$gitrc"
             bash --rcfile "$gitrc" -ri
             rm -f "$gitrc"
         fi
