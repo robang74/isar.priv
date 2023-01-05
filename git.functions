@@ -9,8 +9,9 @@
 #
 
 function irebase() {
-	hash=$(git rev-list --parents -n2 "$1" | tail -n1 | head -c40)
-	git rebase -i $hash
+    test -n "$1" || return 1
+    hash=$(git rev-list --parents -n2 "$1" | tail -n1 | head -c40)
+    test -n "$hash" && git rebase -i $hash
 }
 export -f irebase
 
