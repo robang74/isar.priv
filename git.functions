@@ -217,12 +217,6 @@ export -f bsw
 function for-all-other-branches() {
     test -z "$1" && return 1
 
-    local warn=$(st | grep -e "^Changes [not]* ")
-    if [ -n "$warn" ]; then
-        echo -e "${WARNING}: changes pending, please stash or commit. Abort!" >&2
-        return 1
-    fi
-
 #   local sha=$(git rev-parse --short HEAD)
     local cur=$(git branch --show-current)
     if [ "$cur" == "" ]; then
@@ -249,7 +243,7 @@ function for-all-other-branches() {
         return 1
     fi
 
-    local rpull="true"
+    local rpull="true" stashpop=0
     while true; do
         if [ "x$1" == "x-p" ]; then
             rpull="git pull"
@@ -257,25 +251,37 @@ function for-all-other-branches() {
             rpull="rpull"
         elif [ "x$1" == "x-a" ]; then
             BRANCHES=$(lsbr)
+        elif [ "x$1" == "x-s" ]; then
+            stashpop=1
         else
             break
         fi
         shift
     done
 
+    if [ $stashpop -eq 0 ]; then
+        local warn=$(st | grep -e "^Changes [not]* ")
+        if [ -n "$warn" ]; then
+            echo -e "${WARNING}: changes pending, please stash (-s) or commit. Abort!" >&2
+            return 1
+        fi
+    fi
+
     curdir=$(readlink -f $PWD)
     topdir=$(readlink -f $(git rev-parse --show-toplevel))
     if [ "$curdir" == "$topdir" ]; then
         true
-    elif ! cd $(git rev-parse --show-toplevel); then
+    elif ! cd $topdir; then
         echo -e "${ERROR}: cannot change folder to the top level. Abort!" >&2
         return 1
     fi
-    git fetch origin || return $?
+    forig || return $?
+
+    test $stashpop -ne 0 && stash
 
     BRANCHES=${BRANCHES:-$(lsbr | grep -vwe "$cur")}
 	for branch in ${BRANCHES}; do
-        if ! git switch $branch; then
+        if ! bsw $branch; then
             echo
             echo -e "${byellow}branch: $branch, SKIP${coloff}"
             echo "press ENTER to continue..."
@@ -295,15 +301,16 @@ function for-all-other-branches() {
             cat git.functions >"$gitrc"
             echo "PS1='${bcyan}+git${coloff}:${byellow}'$branch'${coloff}> '" >>"$gitrc"
             if ! bash --rcfile "$gitrc" -ri; then
-                git switch $cur
                 rm -f "$gitrc"
+                bsw $cur
                 return 1
             fi
             rm -f "$gitrc"
         fi
 	done
     unset BRANCHES
-    test "$cur" != "$branch" && git switch $cur
+    test "$cur" != "$branch" && bsw $cur
+    test $stashpop -ne 0 && pop
 }
 export -f for-all-other-branches
 
