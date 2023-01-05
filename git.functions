@@ -101,6 +101,11 @@ function sw() {
 }
 export -f sw
 
+function forig() {
+    git fetch origin "$@"
+}
+export -f forig
+
 function ccache() {
 	local -i t=3600 runcmd=1
 	local d=$(git rev-parse --show-toplevel)
@@ -132,7 +137,7 @@ function ccache() {
 			fi
 			git -c credential.helper='!f() { echo "password=$(cat '$d'/.gitpasswd)"; }; f' push --dry-run 2>/dev/null
 		else
-			git fetch origin
+			forig
 		fi
 		echo -e "git password cache enable for ${t}s eq. to $[t/3600]h $[(t%3600)/60]m $[t%60]s\n"
 	fi
@@ -202,6 +207,12 @@ function lsbr() {
     git branch -r | grep -ve "/HEAD$" -ve "/HEAD " | cut -d/ -f2-
 }
 export -f lsbr
+
+function bsw() {
+    test -z "$1" && return 1
+    git switch "$@"
+}
+export -f bsw
 
 function for-all-other-branches() {
     test -z "$1" && return 1
