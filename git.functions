@@ -245,7 +245,11 @@ function for-all-other-branches() {
         shift
     done
 
-    if ! cd $(git rev-parse --show-toplevel); then
+    curdir=$(readlink -f $PWD)
+    topdir=$(readlink -f $(git rev-parse --show-toplevel))
+    if [ "$curdir" == "$topdir" ]; then
+        true
+    elif ! cd $(git rev-parse --show-toplevel); then
         echo "ERROR: cannot change folder to the top level. Abort!" >&2
         return 1
     fi
