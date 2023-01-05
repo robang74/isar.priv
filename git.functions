@@ -236,23 +236,20 @@ function for-all-other-branches() {
 
     git fetch origin || return $?
 
-    noskip=${BRANCHES}
-    BRANCHES=${BRANCHES:-$(lsbr)}
-	for i in ${BRANCHES}; do
-        test "$noskip" != "" && \
-            test "$i" == "$cur" && continue
-        if ! git switch $i; then
+    BRANCHES=${BRANCHES:-$(lsbr | grep -vwe "$cur")}
+	for branch in ${BRANCHES}; do
+        if ! git switch $branch; then
             echo
-            echo "branch:$i, SKIP"
+            echo "branch: $branch, SKIP"
             echo "press ENTER to continue..."
             read
         elif eval "$rpull" && eval "$@"; then
             echo
-            echo "branch: $i, OK"
+            echo "branch: $branch, OK"
             echo
         else
             echo
-            echo "branch: $i, KO"
+            echo "branch: $branch, KO"
             echo "fix the problem and then type exit"
             echo
             gitrc=$(mktemp -p "$TMPDIR" gitrc.XXXX)
