@@ -9,7 +9,7 @@
 #
 
 function irebase() {
-    test -n "$1" || return 1
+    test -z "$1" && return 1
     hash=$(git rev-list --parents -n2 "$1" | tail -n1 | head -c40)
     test -n "$hash" && git rebase -i $hash
 }
@@ -49,7 +49,7 @@ function ff() {
 export -f ff
 
 function rl() {
-	git reflog
+	git reflog "$@"
 }
 export -f rl
 
@@ -64,27 +64,28 @@ function cm() {
 export -f cm
 
 function amend() {
-	git commit --amend
+	git commit --amend "$@"
 }
 export -f amend
 
 function rebcont() {
-	git rebase --continue
+	git rebase --continue "$@"
 }
 export -f rebcont
 
 function editorset() {
-	 git config --global core.editor "$1"
+    test -z "$1" && return 1
+    git config --global core.editor "$1"
 }
 export -f editorset
 
 function rpull() {
-	git pull --rebase
+	git pull --rebase "$@"
 }
 export -f rpull
 
 function fpush() {
-	git push --force
+	git push --force "$@"
 }
 export -f fpush
 
@@ -143,24 +144,27 @@ function rcont() {
 export -f rcont
 
 function stash() {
-	git stash
+	git stash "$@"
 }
 export -f stash
 
 function pop() {
-	git stash pop
+	git stash pop "$@"
 }
 export -f pop
 
 function tagdel() {
-	git push --delete origin "$1"
-	git tag -d "$1"
+    test -z "$1" && return 1
+    git push --delete origin "$1"
+    git tag -d "$@"
 }
 export -f tagdel
 
 function tagadd() {
-	git tag -a "$1" $2 -m "$1" && \
-	git push origin --tags
+    test -z "$1" && return 1
+    local tag="$1"; shift
+    git tag -a "$tag" "$@" -m "$tag" && \
+        git push origin --tags
 }
 export -f tagadd
 
@@ -180,12 +184,13 @@ function pull() {
 export -f pull
 
 function fpatch() {
+    test -z "$1" && return 1
 	git format-patch -1 "$@"
 }
 export -f fpatch
 
 function chpk() {
-	for i in $@; do
+	for i in "$@"; do
 		git cherry-pick $i || return $?
 	done
 }
@@ -197,7 +202,7 @@ function lsbr() {
 export -f lsbr
 
 function for-all-other-branches() {
-    test "x$1" == "x" && return 1
+    test -z "$1" && return 1
 
     local warn=$(st | grep -e "^Changes [not]* ")
     if [ -n "$warn" ]; then
@@ -291,6 +296,7 @@ function for-all-other-branches() {
 export -f for-all-other-branches
 
 function lgrp() {
+    test -z "$1" && return 1
     local strn=$1; shift
     lg "$@" | grep "$strn" | awk '{print $2}' | egrep .
 }
