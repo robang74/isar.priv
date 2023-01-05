@@ -9,8 +9,9 @@
 #
 
 function irebase() {
-	hash=$(git rev-list --parents -n2 "$1" | tail -n1 | head -c40)
-	git rebase -i $hash
+    test -n "$1" || return 1
+    hash=$(git rev-list --parents -n2 "$1" | tail -n1 | head -c40)
+    test -n "$hash" && git rebase -i $hash
 }
 export -f irebase
 
@@ -198,31 +199,27 @@ export -f lsbr
 function for-all-other-branches() {
     test "x$1" == "x" && return 1
 
-    warn=$(st | grep -e "^Changes [not]* ")
+    local warn=$(st | grep -e "^Changes [not]* ")
     if [ -n "$warn" ]; then
         echo "WARNING: changes pending, please stash or commit. Abort!" >&2
         return 1
     fi
 
-    if [ "x$1" == "x-p" ]; then
-        rpull="git pull"
-        shift
-    elif [ "x$1" == "x-r" ]; then
-        rpull="rpull"
-        shift
-    else
-        rpull="true"
+#   local sha=$(git rev-parse --short HEAD)
+    local cur=$(git branch --show-current)
+    if [ "$cur" == "" ]; then
+        echo "ERROR: this is not the HEAD of a branch. Abort!" >&2
+        return 1
     fi
 
-	local cur=$(git branch --show-current)
     declare -i nbr=$(lsbr | wc -l)
-
     if [ $nbr -le 1 ]; then
         echo "DONE: there is only one branch '$cur' as current. Abort!" >&2
         return 0
     fi
+
     if echo "x$@" | grep -q "fpush"; then
-        echo "ERROR: fpush is not allowed for safety. Aborti!" >&2
+        echo "ERROR: fpush is not allowed for safety. Abort!" >&2
         return 1
     fi
     if echo "x$@" | grep -qe "push.*-f"; then
@@ -248,7 +245,7 @@ function for-all-other-branches() {
         shift
     done
 
-    if ! pushd $(git rev-parse --show-toplevel); then
+    if ! cd $(git rev-parse --show-toplevel); then
         echo "ERROR: cannot change folder to the top level. Abort!" >&2
         return 1
     fi
@@ -269,11 +266,17 @@ function for-all-other-branches() {
             echo
             echo "branch: $branch, KO"
             echo "fix the problem and then type exit"
+            echo "or type exit 1 to abort completely"
             echo
+            local ret=0
             gitrc=$(mktemp -p "$TMPDIR" gitrc.XXXX)
             cat git.functions >"$gitrc"
             echo "PS1='+git:'$branch'> '" >>"$gitrc"
-            bash --rcfile "$gitrc" -ri
+            if ! bash --rcfile "$gitrc" -ri; then
+                git switch $cur
+                rm -f "$gitrc"
+                return 1
+            fi
             rm -f "$gitrc"
         fi
 	done
@@ -285,6 +288,6 @@ export -f for-all-other-branches
 
 function lgrp() {
     local strn=$1; shift
-    lg "$@" | grep "$strn" | awk '{print $2}'
+    lg "$@" | grep "$strn" | awk '{print $2}' | egrep .
 }
 export -f lgrp
