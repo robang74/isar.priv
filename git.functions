@@ -288,6 +288,6 @@ export -f for-all-other-branches
 
 function lgrp() {
     local strn=$1; shift
-    lg "$@" | grep "$strn" | awk '{print $2}'
+    lg "$@" | grep "$strn" | awk '{print $2}' | egrep .
 }
 export -f lgrp
