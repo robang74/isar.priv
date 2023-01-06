@@ -1,4 +1,13 @@
 #!/bin/bash
+#
+# Copyright (c) Roberto A. Foglietta, 2022-2023
+#
+# Authors:
+#  Roberto A. Foglietta <roberto.foglietta@gmail.com>
+#
+# SPDX-License-Identifier: GPLv3
+#
+
 echo
 set -eE
 if [ "$2" == "" -a -f "$1" ]; then
@@ -23,9 +32,9 @@ elif [ $n -le 7 ]; then
     echo
 fi
 usermail=$(git config user.email)
+fromuser=$(git config sendemail.from)
 destination=isar-users@googlegroups.com
 test -n "$usermail" -a -n "$subject" -a -n "$patch"
 shift
 set -x
-git send-email --from $usermail --to $destination \
-	--cc $usermail --subject "$subject" "$patch"
+git send-email --from $fromuser --to $destination --cc $usermail --subject "$subject" "$patch"
