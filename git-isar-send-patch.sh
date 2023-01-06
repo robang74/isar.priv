@@ -1,4 +1,13 @@
 #!/bin/bash
+#
+# Copyright (c) Roberto A. Foglietta, 2022-2023
+#
+# Authors:
+#  Roberto A. Foglietta <roberto.foglietta@gmail.com>
+#
+# SPDX-License-Identifier: GPLv3
+#
+
 echo
 set -eE
 if [ "$2" == "" -a -f "$1" ]; then
