@@ -150,13 +150,14 @@ SCHROOT_MOUNTS += "${BBLAYERS} ${STAGING_DIR} ${SCRIPTSDIR} ${BITBAKEDIR}"
 
 generate_wic_image[vardepsexclude] += "WKS_FULL_PATH BITBAKEDIR TOPDIR"
 generate_wic_image() {
-    export FAKEROOTCMD=${FAKEROOTCMD}
+    export FAKEROOTCMD
     export BUILDDIR=${TOPDIR}
     export MTOOLS_SKIP_CHECK=1
     mkdir -p ${IMAGE_ROOTFS}/../pseudo
     touch ${IMAGE_ROOTFS}/../pseudo/files.db
 
     imager_run -p -d ${PP_WORK} -u root <<'EOSUDO'
+        trap 'rm -rf ${wicdir} ${IMAGE_ROOTFS}/../pseudo ${PP_DEPLOY}/${IMAGE_FULLNAME}.wic*' EXIT
         set -e
 
         # The python path is hard-coded as /usr/bin/python3-native/python3 in wic. Handle that.
@@ -169,11 +170,12 @@ generate_wic_image() {
 
         export PATH="${BITBAKEDIR}/bin:$PATH"
         wicdir="${PP_DEPLOY}/${IMAGE_FULLNAME}.wic.dir/"
-
         "${SCRIPTSDIR}"/wic create "${WKS_FULL_PATH}" \
             --vars "${STAGING_DIR}/${MACHINE}/imgdata/" \
             -o "${wicdir}" --bmap \
-            -e "${IMAGE_BASENAME}" ${WIC_CREATE_EXTRA_ARGS}
+            -e "${IMAGE_BASENAME}" ${WIC_CREATE_EXTRA_ARGS} || err=1
+        chown -R $(id -u):$(id -g) "${wicdir}"
+        test "$err" = "1" && exit 1
 
         WIC_DIRECT=$(ls -t -1 ${wicdir}/*.direct | head -1)
         mv -f ${WIC_DIRECT} ${PP_DEPLOY}/${IMAGE_FULLNAME}.wic
@@ -188,9 +190,9 @@ generate_wic_image() {
                 done
         fi
         rm -rf "${wicdir}"
+        trap - EXIT
 EOSUDO
 
     sudo chown -R $(stat -c "%U" ${LAYERDIR_core}) ${LAYERDIR_core} ${LAYERDIR_isar} ${SCRIPTSDIR} || true
-    sudo chown -R $(id -u):$(id -g) ${DEPLOY_DIR_IMAGE}/${IMAGE_FULLNAME}.wic*
     rm -rf ${IMAGE_ROOTFS}/../pseudo
 }
