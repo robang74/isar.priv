@@ -64,22 +64,22 @@ python do_start_imager_session() {
         session_id = d.getVar("IMAGER_SCHROOT_SESSION_ID", True)
         bb.build.exec_func("schroot_create_configs", d)
         bb.build.exec_func("insert_mounts", d)
-        bb.debug(2, "Opening schroot session %s" % sbuild_chroot)
+#       bb.debug(2, "Opening schroot session %s" % sbuild_chroot)
         if not subprocess.run("schroot -b -c %s -n %s" % (sbuild_chroot, session_id), shell=True).returncode:
             attempts = 1
             break
-        bb.debug(2, "Reusing schroot session %s" % sbuild_chroot)
+#       bb.debug(2, "Reusing schroot session %s" % sbuild_chroot)
         if not subprocess.run("schroot --recover-session -c %s" % session_id, shell=True).returncode:
             attempts = 1
             break
-        udir = d.getVar("SCHROOT_OVERLAY_DIR", True)
-        bb.debug(2, "Closing schroot session %s (%s)" % (sbuild_chroot, session_id))
-        if subprocess.run("schroot -fe -c %s" % session_id, shell=True).returncode:
-            remove = 1
-        bb.build.exec_func("remove_mounts", d)
-        bb.build.exec_func("schroot_delete_configs", d)
+#       bb.debug(2, "Closing schroot session %s (%s)" % (sbuild_chroot, session_id))
+#       if subprocess.run("schroot -fe -c %s" % session_id, shell=True).returncode:
+        remove = 1
+#       bb.build.exec_func("remove_mounts", d)
+#       bb.build.exec_func("schroot_delete_configs", d)
         if remove:
-            bb.debug(2, "Removing session dir: %s/%s" % (udir, session_id))
+            udir = d.getVar("SCHROOT_OVERLAY_DIR", True)
+#           bb.debug(2, "Removing session dir: %s/%s" % (udir, session_id))
             subprocess.run("sudo rm -rf --one-file-system %s/%s /var/lib/schroot/session/%s" % (udir, session_id, session_id), shell=True)
 
     if(attempts > 1):
@@ -101,12 +101,14 @@ python do_stop_imager_session() {
     except subprocess.CalledProcessError as err:
         bb.error("Could not close schroot session %s: %s" % (session_id, err.output.decode('utf-8')) if err.output else "")
     finally:
-        bb.debug(2, "Closing schroot stop session %s (%s)" % (session_id, id))
-        subprocess.run("schroot -fe -c %s" % session_id, shell=True)
-        if 'id' in locals():
-            d.setVar("SBUILD_CHROOT", id)
-            bb.build.exec_func("remove_mounts", d)
-            bb.build.exec_func("schroot_delete_configs", d)
+        udir = d.getVar("SCHROOT_OVERLAY_DIR", True)
+#       bb.debug(2, "Closing schroot stop session %s (%s)" % (session_id, id))
+#       subprocess.run("schroot -fe -c %s" % session_id, shell=True)
+        subprocess.run("sudo rm -rf --one-file-system %s/%s /var/lib/schroot/session/%s" % (udir, session_id, session_id), shell=True)
+#       if 'id' in locals():
+#           d.setVar("SBUILD_CHROOT", id)
+#           bb.build.exec_func("remove_mounts", d)
+#           bb.build.exec_func("schroot_delete_configs", d)
 }
 addtask stop_imager_session before do_deploy after do_image
 
