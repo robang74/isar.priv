@@ -13,7 +13,7 @@ Instruction on how to build can be found in the
 
 - [User Manual](doc/user_manual.md).
 
-### Try
+### Testing the image with QEMU
 
 To test the QEMU image, run the following command:
 
