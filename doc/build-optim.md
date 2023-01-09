@@ -25,32 +25,14 @@ Test Suite
 
 This functions were used to make a comparison about the improvement:
 
-	function fds() {
-	    df -m / | grep /dev | tr -s ' ' | cut -d' ' -f4;
-	}
+* check-build-perform.sh
 
-	function ms() {
-	    du -ms "$@" 2>/dev/null | cut -f1
-	}
+executing the above script in a second terminal and in the top folder
+of your project while on another terminal:
 
-	function chkfds() {
-	    st=$(fds); mx=0;
-	    while sleep 1; do ct=$[st-$(fds)];
-	    if [ $ct -gt $mx ]; then printf "%5s Mb\n" $ct; mx=$ct; fi;
-	    done; ct=$[st-$(fds)];
-	    printf "%5s Mb (max)\n" $mx;
-	    printf "%5s Mb (rest)\n" $ct;
-	    printf "%5s Mb (deb)\n" $(ms build/downloads/deb);
-	    printf "%5s Mb (wic)\n" $(ms build/tmp/deploy/images/*/*.wic);
-	    printf "%5s Mb (cache)\n" $(ms build/sstate-cache);
-	}
-
-	chkfds & read; killall sleep; sleep 1; echo
-
-on another terminal:
-
-	clean all
-	build basic-os
+	1$ clean all
+    2$ ./check-build-perform.sh
+	1$ build basic-os
 
 when complete press a key in the previous terminal to collect data:
 
@@ -209,5 +191,51 @@ Here summuarised for the two opposite cases, the new results:
         9159 Mb (wic)   |  9161 Mb (wic)     -
        11799 Mb (cache) |   245 Mb (cache) 48.16x
        time: 20m13s     | time: 11m57s      1.69x
+
+
+Rebase in 'rebnext'
+-------------------
+
+Due to the great amount of changes, it was required to do a cherry-picking and
+rebase process in order to obtaine a more suitable set of patches. This process
+is still undergonig. This is the results from the 1st round of code assesment:
+
+From these numbers the first thing we notice is that the size of the deb cache
+does not matter at all because 10x more is not slower at all. This makes per-
+fectly sense because linking 385 or 1260 does not make such a difference.
+       
+          full debs           minimal           rebnext
+       ------------ basic-os -------------- ==============
+        3498 Mb (max)   |  3489 Mb (max)     1.00x   1.00x
+        2588 Mb (rest)  |  2587 Mb (rest)    1.00x   1.00x
+        3417 Mb (deb)   |   364 Mb (deb)     9.39x
+         814 Mb (wic)   |   814 Mb (wic)      -
+         273 Mb (cache) |   273 Mb (cache)   1.00x
+       time: 3m09s      | time: 3m10s        2.58x
+       
+Compared to the original the performances increase is impressive, in both cases:
+
+          original           cherries + schroot + rebase
+       ------------ basic-os -------------- ==============
+       43954 Mb (max)   |  3498 Mb (max)    12.57x  16.07x
+       26548 Mb (rest)  |  2588 Mb (rest)   10.26x  14.50x
+        3741 Mb (deb)   |  3417 Mb (deb)      -
+         820 Mb (wic)   |   814 Mb (wic)      -
+       11789 Mb (cache) |   273 Mb (cache)  43.18x
+       time: 8m33s      | time: 3m09s        2.71x
+
+          original           cherries + schroot + rebase
+       ------------ complete ------------- ===============
+       52507 Mb (max)   | 28606 Mb (max)     1.84x   2.23x
+       43311 Mb (rest)  | 19413 Mb (rest)    2.23x   3.33x
+        3741 Mb (deb)   |  3417 Mb (deb)      -
+        9159 Mb (wic)   |  9155 Mb (wic)      -
+       11799 Mb (cache) |   283 Mb (cache)  41.69x
+       time: 20m13s     | time: 11m44s       1.72x
+
+Considering that the local .deb cache growing with the time because new updates
+will be added, and comparing the performance gains between the basic-os and the
+complete image, we can say that on the long run also the complete case will 
+reach the 2x of performance at least in time building.
 
 
