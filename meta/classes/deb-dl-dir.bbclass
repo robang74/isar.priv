@@ -87,23 +87,21 @@ deb_dl_dir_import() {
     bpc="${DEBDIR}/lists/${2}"
     export adn bdn apc bpc nol
     flock -s "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
-        set -e
-
         mkdir -p "${adn}" && test -d "${adn}"
-        find "${apc}" -maxdepth 1 -type f -iname "*\.deb" \
-            -exec ln -Pf -t "${adn}" {} + 2>/dev/null || :
+        find "${apc}" -maxdepth 1 -type f -iname \*.deb \
+            -exec ln -Pf -t "${adn}" {} + 2>/dev/null
 
         test "${nol}" = "nolists" && exit 0
 
         mkdir -p "${bdn}" && test -d "${bdn}"
-        find "${bpc}" -type f -not -name lock -maxdepth 1 -not -name \
-            _isar-apt\* -exec ln -Pf -t "${bdn}" {} + 2>/dev/null || :
+        find "${bpc}" -maxdepth 1 -type f -not -name lock -not -name \
+            _isar-apt\* -exec ln -Pf -t "${bdn}" {} + 2>/dev/null
         chown -R root:root "${bdn}"
-
 EOSUDO'
 }
 
 deb_dl_dir_export() {
+    set -e
     nol="${3}"
     apc="${DEBDIR}/${2}"
     adn="${1}/var/cache/apt/archives/"
@@ -111,18 +109,16 @@ deb_dl_dir_export() {
     bpc="${DEBDIR}/lists/${2}"
     export adn bdn apc bpc nol
     flock "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
-        set -e
-
         mkdir -p "${apc}" && test -d "${apc}"
-        find "${adn}" -maxdepth 1 -type f -iname '*\.deb' |\
-            -exec ln -P -t "${apc}" {} + 2>/dev/null || :
+        find "${adn}" -maxdepth 1 -type f -iname \*.deb \
+            -exec ln -P -t "${apc}" {} + 2>/dev/null
         chown -R $(id -u):$(id -g) "${apc}"
 
         test "${nol}" = "nolists" && exit 0
 
         mkdir -p "${bpc}" && test -d "${bpc}"
-        find "${bdn}" -type f -not -name lock -maxdepth 1 -not -name \
-            _isar-apt\* -exec ln -Pf -t "${bpc}" {} + 2>/dev/null || :
+        find "${bdn}" -maxdepth 1 -type f -not -name lock -not -name \
+            _isar-apt\* -exec ln -Pf -t "${bpc}" {} + 2>/dev/null
         chown -R $(id -u):$(id -g) "${bpc}"
 EOSUDO'
 }
