@@ -31,20 +31,26 @@ do_install_imager_deps() {
 
     E="${@ isar_export_proxies(d)}"
     deb_dl_dir_import ${SCHROOT_DIR} ${distro}
+
     schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
-        apt-get update \
+        apt-get -y update \
             -o Dir::Etc::SourceList="sources.list.d/isar-apt.list" \
             -o Dir::Etc::SourceParts="-" \
             -o APT::Get::List-Cleanup="0"
-        apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y \
-            --allow-unauthenticated --allow-downgrades --download-only install \
-            --reinstall ${IMAGER_INSTALL}'
+        rm -rf /usr/share/man /usr/share/doc
+        apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends \
+            --allow-unauthenticated --allow-downgrades -y install \
+            ${IMAGER_INSTALL}'
 
     deb_dl_dir_export ${SCHROOT_DIR} ${distro}
+
     schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
         apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y \
             --allow-unauthenticated --allow-downgrades install \
-            --reinstall ${IMAGER_INSTALL}'
+            --reinstall ${IMAGER_INSTALL}
+        apt-get -y clean'
+
+    sudo -E chroot ${SCHROOT_DIR} /usr/bin/apt-get -y clean
 }
 addtask install_imager_deps before do_image_tools after do_start_imager_session
 
