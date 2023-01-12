@@ -425,7 +425,7 @@ do_rootfs_finalize() {
         rm -f "${ROOTFSDIR}/etc/apt/apt.conf.d/50isar"
 
         mv "${ROOTFSDIR}/etc/apt/sources-list" \
-            "${ROOTFSDIR}/etc/apt/sources.list.d/bootstrap.list"
+            "${ROOTFSDIR}/etc/apt/sources.list.d/bootstrap.list" || true
 
         rm -f "${ROOTFSDIR}/etc/apt/sources-list"
 EOSUDO
