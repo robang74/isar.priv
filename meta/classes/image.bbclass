@@ -451,7 +451,6 @@ EOSUDO
             -exec touch '{}' -h -d@${SOURCE_DATE_EPOCH} ';' > ${DEPLOY_DIR_IMAGE}/files.modified_timestamps && \
             bbwarn "$(grep ^f ${DEPLOY_DIR_IMAGE}/files.modified_timestamps) \nModified above file timestamps to build image reproducibly"
     fi
-
 }
 addtask rootfs_finalize before do_rootfs after do_rootfs_postprocess
 
