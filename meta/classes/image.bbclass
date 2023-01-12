@@ -434,10 +434,10 @@ do_rootfs_finalize() {
         rm -f "${ROOTFSDIR}/etc/apt/sources.list.d/base-apt.list"
         rm -f "${ROOTFSDIR}/etc/apt/apt.conf.d/50isar"
 
-        if [ -e "${ROOTFSDIR}/etc/apt/sources-list" ]; then
-            mv "${ROOTFSDIR}/etc/apt/sources-list" \
-                "${ROOTFSDIR}/etc/apt/sources.list.d/bootstrap.list"
-        fi
+        mv "${ROOTFSDIR}/etc/apt/sources-list" \
+            "${ROOTFSDIR}/etc/apt/sources.list.d/bootstrap.list" || true
+
+        rm -f "${ROOTFSDIR}/etc/apt/sources-list"
 EOSUDO
 
     # Set same time-stamps to the newly generated file/folders in the
