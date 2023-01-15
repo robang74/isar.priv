@@ -34,12 +34,17 @@ rootfs_do_mounts[weight] = "3"
 rootfs_do_mounts() {
     sudo -s <<'EOSUDO'
         set -e
+
+        mkdir -p ${ROOTFSDIR}/dev/shm
+        mkdir -p ${ROOTFSDIR}/dev/pts
         mountpoint -q '${ROOTFSDIR}/dev' || \
             ( mount -o bind,private /dev '${ROOTFSDIR}/dev' &&
               mount -t tmpfs none '${ROOTFSDIR}/dev/shm' &&
               mount --bind /dev/pts '${ROOTFSDIR}/dev/pts' )
+        mkdir -p ${ROOTFSDIR}/proc
         mountpoint -q '${ROOTFSDIR}/proc' || \
             mount -t proc none '${ROOTFSDIR}/proc'
+        mkdir -p ${ROOTFSDIR}/sys
         mountpoint -q '${ROOTFSDIR}/sys' || \
             mount --rbind /sys '${ROOTFSDIR}/sys'
         mount --make-rslave '${ROOTFSDIR}/sys'
@@ -61,7 +66,6 @@ rootfs_do_mounts() {
             mountpoint -q '${ROOTFSDIR}/base-apt' || \
                 mount --bind '${REPO_BASE_DIR}' '${ROOTFSDIR}/base-apt'
         fi
-
 EOSUDO
 }
 
