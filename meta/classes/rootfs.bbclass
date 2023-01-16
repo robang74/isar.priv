@@ -325,10 +325,12 @@ rootfs_install_sstate_prepare() {
     # so we use some mount magic to prevent that
     mkdir -p ${WORKDIR}/mnt/rootfs
     sudo -s << EOSUDO
+        set -e
         mount --bind ${WORKDIR}/rootfs ${WORKDIR}/mnt/rootfs -o ro
-        sudo tar --one-file-system --exclude="var/log/*" --exclude="var/cache/*" --exclude="var/backups/*" \
+        sudo tar --exclude="proc/*" --exclude="var/log/*" --exclude="var/cache/*" --exclude="var/backups/*" \
             --exclude="var/tmp/*" --exclude="var/crash/*" --exclude="var/spool/*" --exclude="var/lib/apt/*" \
-            --exclude="tmp/*" --exclude-caches --exclude-backups -C ${WORKDIR}/mnt -cpSf rootfs.tar rootfs
+            --exclude="tmp/*" --exclude="dev/*" --exclude="sys/*" --exclude-caches --exclude-backups \
+            --one-file-system -C ${WORKDIR}/mnt -cpSf rootfs.tar rootfs
         umount ${WORKDIR}/mnt/rootfs
         chown $(id -u):$(id -g) rootfs.tar
 EOSUDO
