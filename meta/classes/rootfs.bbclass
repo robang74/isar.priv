@@ -179,6 +179,8 @@ do_rootfs_install[depends] = "isar-bootstrap-${@'target' if d.getVar('ROOTFS_ARC
 do_rootfs_install[recrdeptask] = "do_deploy_deb"
 do_rootfs_install[network] = "${TASK_USE_SUDO}"
 python do_rootfs_install() {
+    import inspect
+
     configure_cmds = (d.getVar("ROOTFS_CONFIGURE_COMMAND", True) or "").split()
     install_cmds = (d.getVar("ROOTFS_INSTALL_COMMAND", True) or "").split()
 
@@ -196,6 +198,7 @@ python do_rootfs_install() {
     progress_reporter = bb.progress.MultiStageProgressReporter(d, stage_weights)
 
     for cmd in cmds:
+        bb.debug(2, "%s is proceding with cmd: %s" % (inspect.stack()[0][3], cmd))
         progress_reporter.next_stage()
 
         if (d.getVarFlag(cmd, 'isar-apt-lock') or "") == "acquire-before":
@@ -293,6 +296,8 @@ rootfs_export_dpkg_status() {
 do_rootfs_postprocess[vardeps] = "${ROOTFS_POSTPROCESS_COMMAND}"
 do_rootfs_postprocess[network] = "${TASK_USE_SUDO}"
 python do_rootfs_postprocess() {
+    import inspect
+
     # Take care that its correctly mounted:
     bb.build.exec_func('rootfs_do_mounts', d)
     # Take care that qemu-*-static is available, since it could have been
@@ -307,6 +312,7 @@ python do_rootfs_postprocess() {
         return
     cmds = cmds.split()
     for i, cmd in enumerate(cmds):
+        bb.debug(2, "%s is executing func: %s" % (inspect.stack()[0][3], cmd))
         bb.build.exec_func(cmd, d)
         progress_reporter.update(int(i / len(cmds) * 100))
 }
@@ -326,6 +332,8 @@ SSTATEPOSTINSTFUNCS += "rootfs_install_sstate_finalize"
 
 # the rootfs is owned by root, so we need some sudoing to pack and unpack
 rootfs_install_sstate_prepare() {
+    bbdebug 2 "rootfs_install_sstate_prepare is running on ${WORKDIR}/rootfs"\
+" $(sudo du -ms '${WORKDIR}/rootfs' | cut -f1)Mb" &
     # this runs in SSTATE_BUILDDIR, which will be deleted automatically
     # tar --one-file-system will cross bind-mounts to the same filesystem,
     # so we use some mount magic to prevent that
@@ -342,6 +350,8 @@ EOSUDO
 do_rootfs_install_sstate_prepare[lockfiles] = "${REPO_ISAR_DIR}/isar.lock"
 
 rootfs_install_sstate_finalize() {
+    bbdebug 2 "rootfs_install_sstate_finalize is running on ${WORKDIR}/rootfs.tar"\
+" $(du -ms rootfs.tar | cut -f1)Mb" &
     # this runs in SSTATE_INSTDIR
     # - after building the rootfs, the tar won't be there, but we also don't need to unpack
     # - after restoring from cache, there will be a tar which we unpack and then delete
@@ -352,6 +362,9 @@ rootfs_install_sstate_finalize() {
 }
 
 python do_rootfs_install_setscene() {
+    import inspect
+    rfsd = d.getVar("ROOTFSDIR", True) or bb.fatal("ROOTFSDIR is not defined")
+    bb.debug(2, "%s is working on %s" % (rfsd, inspect.stack()[0][3]))
     sstate_setscene(d)
 }
 addtask do_rootfs_install_setscene
