@@ -114,6 +114,12 @@ rootfs_configure_apt() {
 EOSUDO
 }
 
+ROOTFS_INSTALL_COMMAND += "rootfs_import_package_cache"
+rootfs_import_package_cache[weight] = "5"
+rootfs_import_package_cache() {
+    deb_dl_dir_import ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
+}
+
 ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_update"
 rootfs_install_pkgs_update[weight] = "5"
 rootfs_install_pkgs_update[isar-apt-lock] = "acquire-before"
@@ -132,12 +138,6 @@ rootfs_install_resolvconf() {
     then
         sudo cp -rL /etc/resolv.conf '${ROOTFSDIR}/etc'
     fi
-}
-
-ROOTFS_INSTALL_COMMAND += "rootfs_import_package_cache"
-rootfs_import_package_cache[weight] = "5"
-rootfs_import_package_cache() {
-    deb_dl_dir_import ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
 }
 
 ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_download"
