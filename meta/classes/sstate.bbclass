@@ -805,22 +805,22 @@ sstate_create_package () {
 	TFILE=`mktemp ${SSTATE_PKG}.XXXXXXXX`
 
 	# Use pigz if available
-	OPT="-czS"
 	if [ -x "$(command -v pigz)" ]; then
-		OPT="-I pigz -cS"
+		ZIP="pigz"
+	else
+		ZIP="gzip"
+		bbwarn "Please, install pigz for parallelisation of compression activities"
 	fi
 
 	# Need to handle empty directories
-	if [ "$(ls -A)" ]; then
-		set +e
-		tar $OPT -f $TFILE *
-		ret=$?
-		if [ $ret -ne 0 ] && [ $ret -ne 1 ]; then
+	if [ "$(command ls -A)" ]; then
+        ret=0 GZIP="--fast" tar -I $ZIP -f "$TFILE" -cS * || ret=$?
+        if [ ! -e "$TFILE" ] || [ $ret -ne 0 -a $ret -ne 1 ]; then
+            bbwarn "failed to create the zipped tarball"
 			exit 1
 		fi
-		set -e
 	else
-		tar $OPT --file=$TFILE --files-from=/dev/null
+		tar -zcS -f $TFILE --files-from=/dev/null
 	fi
 	chmod 0664 $TFILE
 	# Skip if it was already created by some other process
