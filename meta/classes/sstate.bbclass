@@ -837,8 +837,8 @@ sstate_create_package () {
 		return
 	fi
 
-	mkdir --mode=0775 -p `dirname ${SSTATE_PKG}`
-	TFILE=`mktemp ${SSTATE_PKG}.XXXXXXXX`
+	mkdir --mode=0775 -p $(dirname ${SSTATE_PKG})
+	TFILE=$(mktemp ${SSTATE_PKG}.XXXXXXXX)
 
 	OPT="-cS"
 	ZSTD="zstd -${SSTATE_ZSTD_CLEVEL} -T${ZSTD_THREADS}"
@@ -859,20 +859,16 @@ sstate_create_package () {
 	else
 		tar -I "$ZSTD" $OPT --file=$TFILE --files-from=/dev/null
 	fi
-	chmod 0664 $TFILE
+	chmod 0664 "$TFILE"
 	# Skip if it was already created by some other process
-	if [ -h ${SSTATE_PKG} ] && [ ! -e ${SSTATE_PKG} ]; then
-		# There is a symbolic link, but it links to nothing.
-		# Forcefully replace it with the new file.
-		ln -f $TFILE ${SSTATE_PKG} || true
-	elif [ ! -e ${SSTATE_PKG} ]; then
+	if [ ! -e "${SSTATE_PKG}" ]; then
 		# Move into place using ln to attempt an atomic op.
 		# Abort if it already exists
-		ln $TFILE ${SSTATE_PKG} || true
+		ln -P "$TFILE" "${SSTATE_PKG}" && rm -f "$TFILE"
 	else
-		touch ${SSTATE_PKG} 2>/dev/null || true
+		rm "$TFILE"
 	fi
-	rm $TFILE
+	[ -w "${SSTATE_PKG}" ] && touch "${SSTATE_PKG}"
 }
 
 python sstate_sign_package () {
