@@ -796,42 +796,49 @@ sstate_task_postfunc[dirs] = "${WORKDIR}"
 #
 sstate_create_package () {
 	# Exit early if it already exists
-	if [ -e ${SSTATE_PKG} ]; then
-		[ ! -w ${SSTATE_PKG} ] || touch ${SSTATE_PKG}
-		return
+	if [ -w "${SSTATE_PKG}" ]; then
+		touch "${SSTATE_PKG}"
+		return $?
 	fi
 
-	mkdir --mode=0775 -p `dirname ${SSTATE_PKG}`
-	TFILE=`mktemp ${SSTATE_PKG}.XXXXXXXX`
+	mkdir --mode=0775 -p $(dirname ${SSTATE_PKG})
+	TFILE=$(mktemp ${SSTATE_PKG}.XXXXXXXX)
+	RFILE=$(mktemp ${SSTATE_PKG}.XXXXXXXX)
 
 	# Use pigz if available
 	if [ -x "$(command -v pigz)" ]; then
-		ZIP="pigz"
+		ZIP="pigz --fast"
 	else
-		ZIP="gzip"
+		ZIP="gzip --fast"
 		bbwarn "Please, install pigz for parallelisation of compression activities"
 	fi
 
 	# Need to handle empty directories
 	if [ "$(command ls -A)" ]; then
-        ret=0 GZIP="--fast" tar -I $ZIP -f "$TFILE" -cS * || ret=$?
+        #
+        # RAF: it seems that piping is faster in multithreading, memory cache?
+        #      using piping --fast is trading +10% more disk usage and cache
+        #      size for -10% in building time for a fresh clean-all run.
+        #
+        ( tar -cOS * ||:; echo $? >"$RFILE" ) | $ZIP >"$TFILE"
+        ret=$(cat "$RFILE"; rm -f "$RFILE")
         if [ ! -e "$TFILE" ] || [ $ret -ne 0 -a $ret -ne 1 ]; then
             bbwarn "failed to create the zipped tarball"
 			exit 1
 		fi
 	else
-		tar -zcS -f $TFILE --files-from=/dev/null
+		tar -zcS -f "$TFILE" --files-from=/dev/null
 	fi
-	chmod 0664 $TFILE
+	chmod 0664 "$TFILE"
 	# Skip if it was already created by some other process
-	if [ ! -e ${SSTATE_PKG} ]; then
+	if [ ! -e "${SSTATE_PKG}" ]; then
 		# Move into place using ln to attempt an atomic op.
 		# Abort if it already exists
-		ln $TFILE ${SSTATE_PKG} && rm $TFILE
+		ln -P "$TFILE" "${SSTATE_PKG}" && rm -f "$TFILE"
 	else
-		rm $TFILE
+		rm "$TFILE"
 	fi
-	[ ! -w ${SSTATE_PKG} ] || touch ${SSTATE_PKG}
+	[ -w "${SSTATE_PKG}" ] && touch "${SSTATE_PKG}"
 }
 
 python sstate_sign_package () {
