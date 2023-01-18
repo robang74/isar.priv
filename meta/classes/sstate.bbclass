@@ -807,7 +807,7 @@ sstate_create_package () {
 
 	# Use pigz if available
 	if [ -x "$(command -v pigz)" ]; then
-		ZIP="pigz --fast"
+		ZIP="pigz --fast -b 2048"
 	else
 		ZIP="gzip --fast"
 		bbwarn "Please, install pigz for parallelisation of compression activities"
