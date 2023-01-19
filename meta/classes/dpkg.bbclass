@@ -106,6 +106,8 @@ dpkg_runbuild() {
     sh -c "cd ${WORKDIR}; dpkg-source -q -b ${PPS}"
     DSC_FILE=$(find ${WORKDIR} -name "${DEB_SOURCE_NAME}*.dsc" -print)
 
+    sudo rm -rf  "$session"
+    bbdebug 2 "ext_deb_dir:${ext_deb_dir} session:${session}"
     sbuild -A -n -c ${SBUILD_CHROOT} --extra-repository="${ISAR_APT_REPO}" \
         --host=${PACKAGE_ARCH} --build=${SBUILD_HOST_ARCH} ${profiles} \
         --no-run-lintian --no-run-piuparts --no-run-autopkgtest --resolve-alternatives \
@@ -113,9 +115,9 @@ dpkg_runbuild() {
         --chroot-setup-commands="echo \"Package: *\nPin: release n=${DEBDISTRONAME}\nPin-Priority: 1000\" > /etc/apt/preferences.d/isar-apt" \
         --chroot-setup-commands="echo \"APT::Get::allow-downgrades 1;\" > /etc/apt/apt.conf.d/50isar-apt" \
         --chroot-setup-commands="rm -f /var/log/dpkg.log" \
-        --chroot-setup-commands="ln -Pf ${ext_deb_dir}/*.deb -t ${deb_dir}/ 2>/dev/null || :" \
+        --chroot-setup-commands="mount -o bind ${ext_deb_dir} ${deb_dir}" \
         --finished-build-commands="rm -f ${deb_dir}/sbuild-build-depends-main-dummy_*.deb" \
-        --finished-build-commands="ln -Pf ${deb_dir}/*.deb -t ${ext_deb_dir}/ 2>/dev/null || :" \
+        --finished-build-commands="umount ${deb_dir}" \
         --finished-build-commands="cp /var/log/dpkg.log ${ext_root}/dpkg_partial.log" \
         --debbuildopts="--source-option=-I" ${DPKG_SBUILD_EXTRA_ARGS} \
         --build-dir=${WORKDIR} --dist="isar" ${DSC_FILE}
