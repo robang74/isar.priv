@@ -45,9 +45,6 @@ do_install_imager_deps() {
     deb_dl_dir_export ${SCHROOT_DIR} ${distro}
 
     schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
-        apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y \
-            --allow-unauthenticated --allow-downgrades install \
-            ${IMAGER_INSTALL}
         apt-get -y clean'
 
     sudo -E chroot ${SCHROOT_DIR} /usr/bin/apt-get -y clean
