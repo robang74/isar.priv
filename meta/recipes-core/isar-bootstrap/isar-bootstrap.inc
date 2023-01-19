@@ -386,7 +386,7 @@ do_bootstrap() {
         umount -l "${ROOTFSDIR}/dev"
         umount -l "${ROOTFSDIR}/proc"
         umount -l "${ROOTFSDIR}/sys"
-        umount -l "${ROOTFSDIR}/base-apt" || true
+        umount -l "${ROOTFSDIR}/base-apt" 2>&1 | tail -n0 ||:
 
         # Finalize debootstrap by setting the link in deploy
         ln -Tfsr "${ROOTFSDIR}" "${DEPLOY_ISAR_BOOTSTRAP}"
