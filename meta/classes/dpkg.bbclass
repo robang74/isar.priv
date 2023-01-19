@@ -115,7 +115,7 @@ dpkg_runbuild() {
         --chroot-setup-commands="rm -f /var/log/dpkg.log" \
         --chroot-setup-commands="ln -Pf ${ext_deb_dir}/*.deb -t ${deb_dir}/ 2>/dev/null || :" \
         --finished-build-commands="rm -f ${deb_dir}/sbuild-build-depends-main-dummy_*.deb" \
-        --finished-build-commands="ln -P ${deb_dir}/*.deb -t ${ext_deb_dir}/ 2>/dev/null || :" \
+        --finished-build-commands="ln -Pf ${deb_dir}/*.deb -t ${ext_deb_dir}/ 2>/dev/null || :" \
         --finished-build-commands="cp /var/log/dpkg.log ${ext_root}/dpkg_partial.log" \
         --debbuildopts="--source-option=-I" ${DPKG_SBUILD_EXTRA_ARGS} \
         --build-dir=${WORKDIR} --dist="isar" ${DSC_FILE}
