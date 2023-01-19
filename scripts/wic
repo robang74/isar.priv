@@ -336,7 +336,7 @@ def wic_init_parser_create(subparser):
     subparser.add_argument("-s", "--skip-build-check", dest="build_check",
                       action="store_false", default=True, help="skip the build check")
     subparser.add_argument("-f", "--build-rootfs", action="store_true", help="build rootfs")
-    subparser.add_argument("-c", "--compress-with", choices=("gzip", "bzip2", "xz"),
+    subparser.add_argument("-c", "--compress-with", choices=("pigz", "bzip2", "xz"),
                       dest='compressor',
                       help="compress image with specified compressor")
     subparser.add_argument("-m", "--bmap", action="store_true", help="generate .bmap")

@@ -51,7 +51,7 @@ hdrsize=$rsize
 
 case "$(_dd $offset bs=3 count=1)" in
 	"$(printf '\102\132')"*) _dd $offset | bunzip2 ;; # '\x42\x5a'
-	"$(printf '\037\213')"*) _dd $offset | gunzip  ;; # '\x1f\x8b'
+	"$(printf '\037\213')"*) _dd $offset | unpigz  ;; # '\x1f\x8b'
 	"$(printf '\375\067')"*) _dd $offset | xzcat   ;; # '\xfd\x37'
 	"$(printf '\135\000')"*) _dd $offset | unlzma  ;; # '\x5d\x00'
 	"$(printf '\050\265')"*) _dd $offset | unzstd  ;; # '\x28\xb5'
