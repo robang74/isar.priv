@@ -85,21 +85,25 @@ deb_dl_dir_import() {
     adn="${1}/var/cache/apt/archives/"
     bdn="${1}/var/lib/apt/lists/"
     bpc="${DEBDIR}/lists/${2}"
-    export adn bdn apc bpc nol
+    newer="../.export.newer"
+    export adn bdn apc bpc nol newer
     flock -s "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
         set -e
-        mkdir -p "${adn}" || exit 1
+
+        mkdir -p "${adn}"
         test -d "${apc}" && \
-        find "${apc}" -maxdepth 1 -type f -iname \*.deb \
-            -exec ln -Pf -t "${adn}" {} +
+            find "${apc}" -maxdepth 1 -type f -iname \*.deb \
+                -exec ln -Pf -t "${adn}" {} +
+        test -e "${adn}/${newer}" || \
+            touch "${adn}/${newer}"
 
-        test "${nol}" = "nolists" && exit 0
+        test "${nol}" = "nolists" && return 0
 
-        mkdir -p "${bdn}" || exit 1
+        mkdir -p "${bdn}"
         test -d "${bpc}" && \
-        find "${bpc}" -maxdepth 1 -type f -not -name lock -not -name \
-            _isar-apt\* -exec ln -Pf -t "${bdn}" {} +
-        chown -R root:root "${bdn}"
+            find "${bpc}" -maxdepth 1 -type f -not -name lock -not -name \
+                _isar-apt\* -exec ln -Pf -t "${bdn}" {} +
+        touch "${bdn}/${newer}"
 EOSUDO'
 }
 
@@ -109,19 +113,20 @@ deb_dl_dir_export() {
     adn="${1}/var/cache/apt/archives/"
     bdn="${1}/var/lib/apt/lists/"
     bpc="${DEBDIR}/lists/${2}"
-    export adn bdn apc bpc nol
+    newer="../.export.newer"
+    export adn bdn apc bpc nol newer
     flock "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
         set -e
-        mkdir -p "${apc}" || exit 1
-        find "${adn}" -maxdepth 1 -type f -iname \*.deb \
-            -exec ln -Pf -t "${apc}" {} +
-        chown -R $(id -u):$(id -g) "${apc}"
 
-        test "${nol}" = "nolists" && exit 0
+        mkdir -p "${apc}"
+        find "${adn}" -maxdepth 1 -type f -iname \*.deb -newer \
+            "${adn}/${newer}" -exec ln -Pf -t "${apc}" {} +
 
-        mkdir -p "${bpc}" || exit 1
+        test "${nol}" = "nolists" && return 0
+
+        mkdir -p "${bpc}"
         find "${bdn}" -maxdepth 1 -type f -not -name lock -not -name \
-            _isar-apt\* -exec ln -Pf -t "${bpc}" {} +
-        chown -R $(id -u):$(id -g) "${bpc}"
+            _isar-apt\* -newer "${bdn}/${newer}" -exec \
+                ln -Pf -t "${bpc}" {} +
 EOSUDO'
 }
