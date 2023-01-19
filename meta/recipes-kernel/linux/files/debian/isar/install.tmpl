@@ -64,7 +64,7 @@ install_image() {
     # Make sure arm64 and riscv kernels are decompressed
     if [ "${ARCH}" = "arm64" -o "${ARCH}" = "riscv" ]; then
         mv ${deb_img_dir}/${kimage_path} ${deb_img_dir}/${kimage_path}.gz
-        gunzip -f ${deb_img_dir}/${kimage_path}.gz
+        unpigz -f ${deb_img_dir}/${kimage_path}.gz
     fi
 
     install_image_debug
