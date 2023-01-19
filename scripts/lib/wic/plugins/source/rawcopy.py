@@ -51,7 +51,7 @@ class RawCopyPlugin(SourcePlugin):
         extension = os.path.splitext(src)[1]
         decompressor = {
             ".bz2": "bzip2",
-            ".gz": "gzip",
+            ".gz": "pigz",
             ".xz": "xz"
         }.get(extension)
         if not decompressor:

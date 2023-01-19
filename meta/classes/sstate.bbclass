@@ -805,13 +805,12 @@ sstate_create_package () {
 	TFILE=$(mktemp ${SSTATE_PKG}.XXXXXXXX)
 	RFILE=$(mktemp ${SSTATE_PKG}.XXXXXXXX)
 
-	# Use pigz if available
-	if [ -x "$(command -v pigz)" ]; then
-		ZIP="pigz --fast -b 2048"
-	else
-		ZIP="gzip --fast"
+	# Use pigz or exit!
+	if [ ! -x "$(command -v pigz)" ]; then
 		bbwarn "Please, install pigz for parallelisation of compression activities"
+        exit 1
 	fi
+	ZIP="pigz --fast -b 2048"
 
 	# Need to handle empty directories
 	if [ "$(command ls -A)" ]; then
@@ -866,7 +865,7 @@ python sstate_report_unihash() {
 # Will be run from within SSTATE_INSTDIR.
 #
 sstate_unpack_package () {
-	tar -xvzf ${SSTATE_PKG}
+	tar -x -I unpigz -f ${SSTATE_PKG}
 	# update .siginfo atime on local/NFS mirror
 	[ -O ${SSTATE_PKG}.siginfo ] && [ -w ${SSTATE_PKG}.siginfo ] && [ -h ${SSTATE_PKG}.siginfo ] && touch -a ${SSTATE_PKG}.siginfo
 	# Use "! -w ||" to return true for read only files

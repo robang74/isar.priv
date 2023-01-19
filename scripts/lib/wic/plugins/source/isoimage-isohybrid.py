@@ -189,7 +189,7 @@ class IsoImagePlugin(SourcePlugin):
 
             exec_cmd("cd %s && find . | cpio -o -H newc -R root:root >%s/initrd.cpio " \
                      % (initrd_dir, cr_workdir), as_shell=True)
-            exec_cmd("gzip -f -9 %s/initrd.cpio" % cr_workdir, as_shell=True)
+            exec_cmd("pigz -f -9 %s/initrd.cpio" % cr_workdir, as_shell=True)
             shutil.rmtree(initrd_dir)
 
         return initrd
