@@ -71,7 +71,7 @@ def npm_integrity(integrity):
 def npm_unpack(tarball, destdir, d):
     """Unpack a npm tarball"""
     bb.utils.mkdirhier(destdir)
-    cmd = "tar --extract --gzip --file=%s" % shlex.quote(tarball)
+    cmd = "tar --extract -I unpigz --file=%s" % shlex.quote(tarball)
     cmd += " --no-same-owner"
     cmd += " --delay-directory-restore"
     cmd += " --strip-components=1"

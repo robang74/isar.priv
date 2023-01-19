@@ -224,7 +224,7 @@ class DirectPlugin(ImagerPlugin):
         """
         msg = "The new image(s) can be found here:\n"
 
-        extension = "direct" + {"gzip": ".gz",
+        extension = "direct" + {"pigz": ".gz",
                                 "bzip2": ".bz2",
                                 "xz": ".xz",
                                 None: ""}.get(self.compressor)
