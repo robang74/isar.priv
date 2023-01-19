@@ -125,7 +125,7 @@ class Osc(FetchMethod):
         f.write("su-wrapper = su -c\n")
         f.write("build-root = %s\n" % d.getVar('WORKDIR'))
         f.write("urllist = %s\n" % d.getVar("OSCURLLIST"))
-        f.write("extra-pkgs = gzip\n")
+        f.write("extra-pkgs = pigz\n")
         f.write("\n")
         f.write("[%s]\n" % ud.host)
         f.write("user = %s\n" % ud.parm["user"])

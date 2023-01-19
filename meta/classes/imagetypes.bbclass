@@ -95,8 +95,8 @@ IMAGE_CMD_ubi[depends] = "${PN}:do_transform_template"
 # image conversions
 IMAGE_CONVERSIONS = "gz xz"
 
-CONVERSION_CMD_gz = "${SUDO_CHROOT} sh -c 'gzip -f -9 -n -c --rsyncable ${IMAGE_FILE_CHROOT} > ${IMAGE_FILE_CHROOT}.gz'"
-CONVERSION_DEPS_gz = "gzip"
+CONVERSION_CMD_gz = "${SUDO_CHROOT} sh -c 'pigz -f -9 -n -c --rsyncable ${IMAGE_FILE_CHROOT} > ${IMAGE_FILE_CHROOT}.gz'"
+CONVERSION_DEPS_gz = "pigz"
 
 XZ_MEMLIMIT ?= "50%"
 XZ_THREADS ?= "${@oe.utils.cpu_count(at_least=2)}"
