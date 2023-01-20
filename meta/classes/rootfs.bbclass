@@ -114,13 +114,13 @@ EOSUDO
 }
 
 print_num_debs() {
-    bbwarn "$1 ${3:+$3 }deb: $(ls -1 $2/var/cache/apt/archives/*.deb 2>/dev/null | wc -l ||:)"
+    bbwarn "$1 ${3:+$3 }deb: $(ls -1 $2/var/cache/apt/archives/*.deb 2>/dev/null | wc -l || echo 0)"
 }
 
 ROOTFS_INSTALL_COMMAND += "rootfs_import_package_cache"
 rootfs_import_package_cache[weight] = "5"
 rootfs_import_package_cache() {
-    set -e
+#   set -e
     deb_dl_dir_import ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
     local ret=$?
     bbwarn "rootfs_import_package_cache lst: $(ls -1 ${ROOTFSDIR}/var/lib/apt/lists/* 2>/dev/null | wc -l)"
@@ -133,7 +133,7 @@ ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_update"
 rootfs_install_pkgs_update[weight] = "5"
 rootfs_install_pkgs_update[isar-apt-lock] = "acquire-before"
 rootfs_install_pkgs_update() {
-    set -e
+#   set -e
     bbwarn "rootfs_install_pkgs_update 1 lst: $(ls -1 ${ROOTFSDIR}/var/lib/apt/lists/* 2>/dev/null | wc -l)"
     print_num_debs rootfs_install_pkgs_update ${ROOTFSDIR} 1
     bbwarn "rootfs_install_pkgs_update 1 bin: "$(cd ${ROOTFSDIR}/var/cache/apt/ && ls -1 *.bin 2>/dev/null ||:)
@@ -161,7 +161,7 @@ ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_download"
 rootfs_install_pkgs_download[weight] = "600"
 rootfs_install_pkgs_download[isar-apt-lock] = "release-after"
 rootfs_install_pkgs_download() {
-    set -e
+#   set -e
     bbwarn "rootfs_install_pkgs_update 1 lst: $(ls -1 ${ROOTFSDIR}/var/lib/apt/lists/* 2>/dev/null | wc -l)"
     print_num_debs rootfs_install_pkgs_download ${ROOTFSDIR} 1
     bbwarn "rootfs_install_pkgs_update 1 bin: "$(cd ${ROOTFSDIR}/var/cache/apt/ && ls -1 *.bin 2>/dev/null ||:)
@@ -177,11 +177,13 @@ rootfs_install_pkgs_download() {
 ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_install"
 rootfs_install_pkgs_install[weight] = "8000"
 rootfs_install_pkgs_install() {
-    set -e
+#   set -e
     print_num_debs rootfs_install_pkgs_install ${ROOTFSDIR} 1
     sudo -E chroot "${ROOTFSDIR}" \
         /usr/bin/apt-get ${ROOTFS_APT_ARGS} -y ${ROOTFS_PACKAGES}
+    local ret=$?
     print_num_debs rootfs_install_pkgs_install ${ROOTFSDIR} 2
+    return $ret
 }
 
 ROOTFS_INSTALL_COMMAND_BEFORE_EXPORT ??= ""
@@ -190,19 +192,23 @@ ROOTFS_INSTALL_COMMAND += "${ROOTFS_INSTALL_COMMAND_BEFORE_EXPORT}"
 ROOTFS_INSTALL_COMMAND += "rootfs_export_package_cache"
 rootfs_export_package_cache[weight] = "5"
 rootfs_export_package_cache() {
-    set -e
+#   set -e
     print_num_debs rootfs_export_package_cache ${ROOTFSDIR} 1
     deb_dl_dir_export ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
     local ret=$?
     print_num_debs rootfs_export_package_cache ${ROOTFSDIR} 2
-    return $?
+    mountpoint -q ${ROOTFSDIR}/var/cache/apt/archives/ && exit 1
+    return $ret
 }
 
 ROOTFS_INSTALL_COMMAND += "${@ 'rootfs_install_clean_files' if (d.getVar('ROOTFS_CLEAN_FILES') or '').strip() else ''}"
 rootfs_install_clean_files[weight] = "2"
 rootfs_install_clean_files() {
+    print_num_debs rootfs_install_clean_files ${ROOTFSDIR} 1
+    bbwarn "rootfs_install_clean_files: "${ROOTFS_CLEAN_FILES}
     sudo -E chroot '${ROOTFSDIR}' \
         /bin/rm -f ${ROOTFS_CLEAN_FILES}
+    print_num_debs rootfs_install_clean_files ${ROOTFSDIR} 2
 }
 
 do_rootfs_install[root_cleandirs] = "${ROOTFSDIR}"
@@ -231,6 +237,7 @@ python do_rootfs_install() {
 
     for cmd in cmds:
         bb.debug(2, "%s is proceding with cmd: %s" % (inspect.stack()[0][3], cmd))
+        bb.warn("%s is proceding with cmd: %s" % (inspect.stack()[0][3], cmd))
         progress_reporter.next_stage()
 
         if (d.getVarFlag(cmd, 'isar-apt-lock') or "") == "acquire-before":
@@ -269,7 +276,7 @@ cache_deb_src() {
 
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'clean-package-cache', 'rootfs_postprocess_clean_package_cache', '', d)}"
 rootfs_postprocess_clean_package_cache() {
-    set -e
+#   set -e
     bbwarn "rootfs_postprocess_clean_package_cache prep $(ls -1 '${ROOTFSDIR}'/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
     mountpoint -q '${ROOTFSDIR}'/var/cache/apt/archives ||\
         sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get -y clean
