@@ -124,7 +124,7 @@ dpkg_runbuild() {
     if [ ${USE_CCACHE} -eq 1 ]; then
         deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}"
     else
-        deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}" ${USE_CCACHE:-nolists}
+        deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}" nolists
     fi
 
     # Cleanup apt artifacts
