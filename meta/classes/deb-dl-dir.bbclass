@@ -80,8 +80,8 @@ debsrc_download() {
 
 ##### ##### ##### RAF REWORK ##### ##### #####
 
-print_num_debs() {
-    bbwarn "$1 ${3:+$3 }$(ls -1 "$2"/*.deb 2>/dev/null | wc -l || echo 0) debian packages"
+dl_print_num_debs() {
+    bbwarn "$1 ${3:+$3 }$(sudo ls -1 "$2"/*.deb 2>/dev/null | wc -l || echo 0) debian packages"
 }
 
 deb_dl_dir_link_import() {
@@ -92,10 +92,10 @@ deb_dl_dir_link_import() {
     bpc="${DEBDIR}/lists/${2}"
     newer="../.export.newer"
     export adn bdn apc bpc nol newer
-    print_num_debs "deb_dl_dir_link_import" "${apc}" apc
-    print_num_debs "deb_dl_dir_link_import" "${adn}" adn
+    dl_print_num_debs "deb_dl_dir_link_import" "${apc}" apc
+    dl_print_num_debs "deb_dl_dir_link_import" "${adn}" adn
     flock -s "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
-        set -e
+        set -ex
         mkdir -p "${adn}"
         test -d "${apc}" && \
             find "${apc}" -maxdepth 1 -type f -iname \*.deb \
@@ -107,8 +107,8 @@ deb_dl_dir_link_import() {
 
         mkdir -p "${bdn}"
         test -d "${bpc}" && \
-            find "${bpc}" -maxdepth 1 -type f -not -name lock -not -name \
-                _isar-apt\* -exec ln -Pf -t "${bdn}" {} +
+            find "${bpc}" -maxdepth 1 -type f -not -name "lock" \
+                -not -name "_isar-apt\*" -exec ln -Pf -t "${bdn}" {} +
         touch "${bdn}/${newer}"
 EOSUDO'
 }
@@ -121,10 +121,10 @@ deb_dl_dir_link_export() {
     bpc="${DEBDIR}/lists/${2}"
     newer="../.export.newer"
     export adn bdn apc bpc nol newer
-    print_num_debs "deb_dl_dir_link_export" "${apc}" apc
-    print_num_debs "deb_dl_dir_link_export" "${adn}" adn
+    dl_print_num_debs "deb_dl_dir_link_export" "${apc}" apc
+    dl_print_num_debs "deb_dl_dir_link_export" "${adn}" adn
     flock "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
-        set -e
+        set -ex
         mkdir -p "${apc}"
         find "${adn}" -maxdepth 1 -type f -iname \*.deb -newer \
             "${adn}/${newer}" -exec ln -Pf -t "${apc}" {} +
@@ -132,9 +132,9 @@ deb_dl_dir_link_export() {
         test "${nol}" = "nolists" && return 0
 
         mkdir -p "${bpc}"
-        find "${bdn}" -maxdepth 1 -type f -not -name lock -not -name \
-            _isar-apt\* -newer "${bdn}/${newer}" -exec \
-                ln -Pf -t "${bpc}" {} +
+        find "${bdn}" -maxdepth 1 -type f -not -name "lock" \
+            -not -name "_isar-apt\*" -newer "${bdn}/${newer}" \
+                -exec ln -Pf -t "${bpc}" {} +
 EOSUDO'
 }
 
@@ -146,8 +146,8 @@ deb_dl_dir_bind_import() {
     bpc="${DEBDIR}/lists/${2}"
     newer="../.export.newer"
     export adn bdn apc bpc nol newer
-    print_num_debs "deb_dl_dir_bind_import" "${apc}" apc
-    print_num_debs "deb_dl_dir_bind_import" "${adn}" adn
+    dl_print_num_debs "deb_dl_dir_bind_import" "${apc}" apc
+    dl_print_num_debs "deb_dl_dir_bind_import" "${adn}" adn
     flock -s "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
         set -e
         mkdir -p "${adn}" "${apc}/partial"
@@ -172,8 +172,8 @@ deb_dl_dir_bind_export() {
     bpc="${DEBDIR}/lists/${2}"
     newer="../.export.newer"
     export adn bdn apc bpc nol newer
-    print_num_debs "deb_dl_dir_bind_export" "${apc}" apc
-    print_num_debs "deb_dl_dir_bind_export" "${adn}" adn
+    dl_print_num_debs "deb_dl_dir_bind_export" "${apc}" apc
+    dl_print_num_debs "deb_dl_dir_bind_export" "${adn}" adn
     flock "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
         set -e
         umount -l "${adn}"
