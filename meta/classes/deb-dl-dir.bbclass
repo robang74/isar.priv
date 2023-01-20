@@ -84,6 +84,29 @@ dl_print_num_debs() {
     bbwarn "$1 ${3:+$3 }$(sudo ls -1 "$2"/*.deb 2>/dev/null | wc -l || echo 0) debian packages"
 }
 
+deb_dl_dir_link_copy() {
+    nol="${3}"
+    apc="${2}/var/cache/apt/archives/"
+    adn="${1}/var/cache/apt/archives/"
+    bdn="${1}/var/lib/apt/lists/"
+    bpc="${2}/var/lib/apt/lists/"
+    export adn bdn apc bpc nol
+    dl_print_num_debs "deb_dl_dir_link_export" "${apc}" apc
+    dl_print_num_debs "deb_dl_dir_link_export" "${adn}" adn
+    flock "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
+        set -ex
+        mkdir -p "${apc}"
+        sudo find "${adn}" -maxdepth 1 -type f \
+            -iname "\*.deb" -exec ln -Pf -t "${apc}" {} +
+
+        test "${nol}" = "nolists" && exit 0
+
+        mkdir -p "${bpc}"
+        find "${bdn}" -maxdepth 1 -type f -not -name "lock" \
+            -not -name "_isar-apt\*" -exec ln -Pf -t "${bpc}" {} +
+EOSUDO'
+}
+
 deb_dl_dir_link_import() {
     nol="${3}"
     apc="${DEBDIR}/${2}"
