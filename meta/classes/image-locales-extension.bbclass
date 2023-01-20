@@ -36,6 +36,8 @@ ROOTFS_INSTALL_COMMAND_BEFORE_EXPORT += "image_install_localepurge_install"
 image_install_localepurge_install[weight] = "700"
 image_install_localepurge_install() {
 
+    bbwarn "image_install_localepurge_install 2 deb: $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l ||:)"
+
     # Generate locale and localepurge configuration:
     cat<<__EOF__ > ${WORKDIR}/locale.gen
 ${@get_locale_gen(d)}
@@ -105,4 +107,6 @@ EOSH
             chroot '${ROOTFSDIR}' apt-get autoremove --purge --yes
         fi
 EOSUDO
+
+    bbwarn "image_install_localepurge_install 2 deb: $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l ||:)"
 }

@@ -78,13 +78,6 @@ dpkg_runbuild() {
     ext_root="${PP}/rootfs"
     ext_deb_dir="${ext_root}${deb_dir}"
 
-    if [ ${USE_CCACHE} -eq 1 ]; then
-        deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}"
-        schroot_configure_ccache
-    else
-        deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}" nolists
-    fi
-
     profiles="${@ isar_deb_build_profiles(d)}"
     if [ ! -z "$profiles" ]; then
         profiles=$(echo --profiles="$profiles" | sed -e 's/ \+/,/g')
@@ -99,23 +92,36 @@ dpkg_runbuild() {
     ${@ expand_sbuild_pt_additions(d)}
 
     echo '$apt_keep_downloaded_packages = 1;' >> ${SBUILD_CONFIG}
+    bbwarn "after import 2"
 
     # Create a .dsc file from source directory to use it with sbuild
     DEB_SOURCE_NAME=$(dpkg-parsechangelog --show-field Source --file ${WORKDIR}/${PPS}/debian/changelog)
-    find ${WORKDIR} -name "${DEB_SOURCE_NAME}*.dsc" -delete
+    sudo find ${WORKDIR} -name "${DEB_SOURCE_NAME}*.dsc" -type f -delete
+    bbwarn "after import 3"
     sh -c "cd ${WORKDIR}; dpkg-source -q -b ${PPS}"
-    DSC_FILE=$(find ${WORKDIR} -name "${DEB_SOURCE_NAME}*.dsc" -print)
+    DSC_FILE=$(sudo find ${WORKDIR} -name "${DEB_SOURCE_NAME}*.dsc" -type f -print)
+
+    bbwarn "after import 4"
+    if [ ${USE_CCACHE} -eq 1 ]; then
+        deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}"
+        schroot_configure_ccache
+    else
+        deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}" nolists
+    fi
+    bbwarn "after import 1"
 
     rootfs_delete_but_not_archives() {
         set -e
         local archives="${WORKDIR}/rootfs/var/cache/apt/archives"
         if mountpoint -q "${archives}"; then
-            mv $(dirname $archives) $(mktemp -dp ${WORKDIR} apt.XXXX)
+            sudo chmod -R a+r "${archives}"/partial
+            sudo mv $(dirname $archives) $(mktemp -dp ${WORKDIR} apt.XXXX)
             return $?
         fi
         return 0
     }
 
+    bbwarn "before sbuild"
     sbuild -A -n -c ${SBUILD_CHROOT} --extra-repository="${ISAR_APT_REPO}" \
         --host=${PACKAGE_ARCH} --build=${SBUILD_HOST_ARCH} ${profiles} \
         --no-run-lintian --no-run-piuparts --no-run-autopkgtest --resolve-alternatives \
@@ -129,6 +135,7 @@ dpkg_runbuild() {
         --finished-build-commands="cp /var/log/dpkg.log ${ext_root}/dpkg_partial.log" \
         --debbuildopts="--source-option=-I" ${DPKG_SBUILD_EXTRA_ARGS} \
         --build-dir=${WORKDIR} --dist="isar" ${DSC_FILE}
+    bbwarn "after sbuild"
 
     sbuild_dpkg_log_export "${WORKDIR}/rootfs/dpkg_partial.log"
     if [ ${USE_CCACHE} -eq 1 ]; then
