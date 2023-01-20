@@ -54,7 +54,7 @@ debsrc_download() {
 
     ( flock 9
     set -e
-    find "${rootfs}/var/cache/apt/archives/" -maxdepth 1 -type f -iname '*\.deb' | while read package; do
+    find "${rootfs}/var/cache/apt/archives/" -maxdepth 1 -type f -not -name "partial" -iname '*\.deb' | while read package; do
         is_not_part_of_current_build "${package}" && continue
         # Get source package name if available, fallback to package name
         local src="$( dpkg-deb --field "${package}" Source | awk '{printf $1}' )"

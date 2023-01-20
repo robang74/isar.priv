@@ -56,8 +56,12 @@ python stop_schroot_session() {
         bb.warn("Failed to close schroot session, removing %s: %s"
             % (session_id, err.output.decode('utf-8').str if err.output else ""))
         udir = d.getVar("SCHROOT_OVERLAY_DIR", True)
-        subprocess.run("sudo rm -rf --one-file-system %s/%s /var/lib/schroot/session/%s"
-            % (udir, session_id, session_id), shell=True)
+#       RAF: this is not safe because it can contais mountpoints and despite the option
+#            --one-file-system they will deleted. So, the best is to move it away
+#       subprocess.run("sudo /bin/rm --one-file-system -rf %s/%s /var/lib/schroot/session/%s"
+#           % (udir, session_id, session_id), shell=True)
+        subprocess.run("sudo /bin/mv %s/%s $(mktemp -dp %s %s.XXXX); sudo rm -rf /var/lib/schroot/session/%s"
+            % (udir, session_id, udir, session_id, session_id), shell=True)
 }
 
 python build_completed() {

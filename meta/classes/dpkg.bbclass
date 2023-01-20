@@ -106,8 +106,16 @@ dpkg_runbuild() {
     sh -c "cd ${WORKDIR}; dpkg-source -q -b ${PPS}"
     DSC_FILE=$(find ${WORKDIR} -name "${DEB_SOURCE_NAME}*.dsc" -print)
 
-    sudo rm -rf  "$session"
-    bbdebug 2 "ext_deb_dir:${ext_deb_dir} session:${session}"
+    rootfs_delete_but_not_archives() {
+        set -e
+        local archives="${WORKDIR}/rootfs/var/cache/apt/archives"
+        if mountpoint -q "${archives}"; then
+            mv $(dirname $archives) $(mktemp -dp ${WORKDIR} apt.XXXX)
+            return $?
+        fi
+        return 0
+    }
+
     sbuild -A -n -c ${SBUILD_CHROOT} --extra-repository="${ISAR_APT_REPO}" \
         --host=${PACKAGE_ARCH} --build=${SBUILD_HOST_ARCH} ${profiles} \
         --no-run-lintian --no-run-piuparts --no-run-autopkgtest --resolve-alternatives \
@@ -116,8 +124,8 @@ dpkg_runbuild() {
         --chroot-setup-commands="echo \"APT::Get::allow-downgrades 1;\" > /etc/apt/apt.conf.d/50isar-apt" \
         --chroot-setup-commands="rm -f /var/log/dpkg.log" \
         --chroot-setup-commands="mount -o bind ${ext_deb_dir} ${deb_dir}" \
+        --finished-build-commands="umount -l ${deb_dir}" \
         --finished-build-commands="rm -f ${deb_dir}/sbuild-build-depends-main-dummy_*.deb" \
-        --finished-build-commands="umount ${deb_dir}" \
         --finished-build-commands="cp /var/log/dpkg.log ${ext_root}/dpkg_partial.log" \
         --debbuildopts="--source-option=-I" ${DPKG_SBUILD_EXTRA_ARGS} \
         --build-dir=${WORKDIR} --dist="isar" ${DSC_FILE}
@@ -126,9 +134,7 @@ dpkg_runbuild() {
     if [ ${USE_CCACHE} -eq 1 ]; then
         deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}"
     else
-        deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}" ${USE_CCACHE:-nolists}
+        deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}" nolists
     fi
-
-    # Cleanup apt artifacts
-    sudo rm -rf ${WORKDIR}/rootfs
+    rootfs_delete_but_not_archives
 }

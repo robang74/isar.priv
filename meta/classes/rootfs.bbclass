@@ -61,7 +61,6 @@ rootfs_do_mounts() {
             mountpoint -q '${ROOTFSDIR}/base-apt' || \
                 mount --bind '${REPO_BASE_DIR}' '${ROOTFSDIR}/base-apt'
         fi
-
 EOSUDO
 }
 
@@ -117,17 +116,32 @@ EOSUDO
 ROOTFS_INSTALL_COMMAND += "rootfs_import_package_cache"
 rootfs_import_package_cache[weight] = "5"
 rootfs_import_package_cache() {
+    set -e
     deb_dl_dir_import ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
+    local ret=$?
+    bbwarn "rootfs_import_package_cache lst: $(ls -1 ${ROOTFSDIR}/var/lib/apt/lists/* 2>/dev/null | wc -l)"
+    bbwarn "rootfs_import_package_cache deb: $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
+    bbwarn "rootfs_import_package_cache bin: "$(cd ${ROOTFSDIR}/var/cache/apt/ && ls -1 *.bin 2>/dev/null ||:)
+    return $ret
 }
 
 ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_update"
 rootfs_install_pkgs_update[weight] = "5"
 rootfs_install_pkgs_update[isar-apt-lock] = "acquire-before"
 rootfs_install_pkgs_update() {
-    sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get update \
+    set -e
+    bbwarn "rootfs_install_pkgs_update 1 lst: $(ls -1 ${ROOTFSDIR}/var/lib/apt/lists/* 2>/dev/null | wc -l)"
+    bbwarn "rootfs_install_pkgs_update 1 deb: $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
+    bbwarn "rootfs_install_pkgs_update 1 bin: "$(cd ${ROOTFSDIR}/var/cache/apt/ && ls -1 *.bin 2>/dev/null ||:)
+    sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get -y update \
         -o Dir::Etc::SourceList="sources.list.d/isar-apt.list" \
         -o Dir::Etc::SourceParts="-" \
         -o APT::Get::List-Cleanup="0"
+    ret=$?
+    bbwarn "rootfs_install_pkgs_update 2 lst: $(ls -1 ${ROOTFSDIR}/var/lib/apt/lists/* 2>/dev/null | wc -l)"
+    bbwarn "rootfs_install_pkgs_update 2 deb: $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
+    bbwarn "rootfs_install_pkgs_update 2 bin: "$(cd ${ROOTFSDIR}/var/cache/apt/ && ls -1 *.bin 2>/dev/null ||:)
+    return $ret
 }
 
 ROOTFS_INSTALL_COMMAND += "rootfs_install_resolvconf"
@@ -143,8 +157,26 @@ ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_download"
 rootfs_install_pkgs_download[weight] = "600"
 rootfs_install_pkgs_download[isar-apt-lock] = "release-after"
 rootfs_install_pkgs_download() {
+    set -e
+    bbwarn "rootfs_install_pkgs_update 1 lst: $(ls -1 ${ROOTFSDIR}/var/lib/apt/lists/* 2>/dev/null | wc -l)"
+    bbwarn "rootfs_install_pkgs_update 1 deb: $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
+    bbwarn "rootfs_install_pkgs_update 1 bin: "$(cd ${ROOTFSDIR}/var/cache/apt/ && ls -1 *.bin 2>/dev/null ||:)
     sudo -E chroot '${ROOTFSDIR}' \
         /usr/bin/apt-get ${ROOTFS_APT_ARGS} --download-only ${ROOTFS_PACKAGES}
+    local ret=$?
+    bbwarn "rootfs_install_pkgs_update 2 lst: $(ls -1 ${ROOTFSDIR}/var/lib/apt/lists/* 2>/dev/null | wc -l)"
+    bbwarn "rootfs_install_pkgs_update 2 deb: $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
+    bbwarn "rootfs_install_pkgs_update 2 bin: "$(cd ${ROOTFSDIR}/var/cache/apt/ && ls -1 *.bin 2>/dev/null ||:)
+    return $ret
+}
+
+ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_install"
+rootfs_install_pkgs_install[weight] = "8000"
+rootfs_install_pkgs_install() {
+    set -e
+    bbwarn "rootfs_install_pkgs_install $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives | wc -l)"
+    sudo -E chroot "${ROOTFSDIR}" \
+        /usr/bin/apt-get ${ROOTFS_APT_ARGS} -y ${ROOTFS_PACKAGES}
 }
 
 ROOTFS_INSTALL_COMMAND_BEFORE_EXPORT ??= ""
@@ -153,7 +185,12 @@ ROOTFS_INSTALL_COMMAND += "${ROOTFS_INSTALL_COMMAND_BEFORE_EXPORT}"
 ROOTFS_INSTALL_COMMAND += "rootfs_export_package_cache"
 rootfs_export_package_cache[weight] = "5"
 rootfs_export_package_cache() {
+    set -e
+    bbwarn "rootfs_export_package_cache 1 $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
     deb_dl_dir_export ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
+    local ret=$?
+    bbwarn "rootfs_export_package_cache 2 $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb | wc -l)"
+    return $?
 }
 
 ROOTFS_INSTALL_COMMAND += "${@ 'rootfs_install_clean_files' if (d.getVar('ROOTFS_CLEAN_FILES') or '').strip() else ''}"
@@ -161,13 +198,6 @@ rootfs_install_clean_files[weight] = "2"
 rootfs_install_clean_files() {
     sudo -E chroot '${ROOTFSDIR}' \
         /bin/rm -f ${ROOTFS_CLEAN_FILES}
-}
-
-ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_install"
-rootfs_install_pkgs_install[weight] = "8000"
-rootfs_install_pkgs_install() {
-    sudo -E chroot "${ROOTFSDIR}" \
-        /usr/bin/apt-get ${ROOTFS_APT_ARGS} -y ${ROOTFS_PACKAGES}
 }
 
 do_rootfs_install[root_cleandirs] = "${ROOTFSDIR}"
@@ -234,8 +264,13 @@ cache_deb_src() {
 
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'clean-package-cache', 'rootfs_postprocess_clean_package_cache', '', d)}"
 rootfs_postprocess_clean_package_cache() {
-    sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get -y clean
+    set -e
+    bbwarn "rootfs_postprocess_clean_package_cache prep $(ls -1 '${ROOTFSDIR}'/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
+    mountpoint -q '${ROOTFSDIR}'/var/cache/apt/archives ||\
+        sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get -y clean
     sudo rm -rf "${ROOTFSDIR}/var/lib/apt/lists/"*
+    bbwarn "rootfs_postprocess_clean_package_cache post $(ls -1 '${ROOTFSDIR}'/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
+    return 0
 }
 
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'clean-log-files', 'rootfs_postprocess_clean_log_files', '', d)}"

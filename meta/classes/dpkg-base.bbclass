@@ -135,7 +135,7 @@ do_apt_fetch[lockfiles] += "${REPO_ISAR_DIR}/isar.lock"
 do_apt_fetch[depends] += "${SCHROOT_DEP}"
 
 do_apt_unpack() {
-    rm -rf ${S}
+    /bin/rm --one-file-system -rf ${S}
     schroot_create_configs
 
     schroot_cleanup() {

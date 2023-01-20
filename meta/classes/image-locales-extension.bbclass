@@ -25,14 +25,14 @@ def get_nopurge(d):
                                           j.split()[0].split(".")[0],
                                           j.split()[0]))))
 
-ROOTFS_INSTALL_COMMAND_BEFORE_EXPORT += "image_install_localepurge_download"
+#ROOTFS_INSTALL_COMMAND_BEFORE_EXPORT += "image_install_localepurge_download"
 image_install_localepurge_download[weight] = "40"
 image_install_localepurge_download() {
     sudo -E chroot '${ROOTFSDIR}' \
         /usr/bin/apt-get ${ROOTFS_APT_ARGS} --download-only localepurge
 }
 
-ROOTFS_INSTALL_COMMAND += "image_install_localepurge_install"
+ROOTFS_INSTALL_COMMAND_BEFORE_EXPORT += "image_install_localepurge_install"
 image_install_localepurge_install[weight] = "700"
 image_install_localepurge_install() {
 
@@ -63,10 +63,10 @@ __EOF__
         localepurge_state='i'
         if chroot '${ROOTFSDIR}' dpkg -s localepurge 2>/dev/null >&2
         then
-            echo 'localepurge was installed (leaving it installed later)'
+            : #echo 'localepurge was installed (leaving it installed later)'
         else
             localepurge_state='p'
-            echo 'localepurge was not installed (removing it later)'
+            # echo 'localepurge was not installed (removing it later)'
             chroot '${ROOTFSDIR}' apt-get ${ROOTFS_APT_ARGS} localepurge
         fi
 

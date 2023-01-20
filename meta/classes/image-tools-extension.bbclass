@@ -41,10 +41,12 @@ do_install_imager_deps() {
 
     deb_dl_dir_export ${session}/upper ${distro}
 
-    schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
-        apt-get -y clean'
+    mountpoint -q ${session}/upper/${archives} ||\
+        schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} \
+            -d / -u root -- sh -c 'apt-get -y clean'
 
-    sudo -E chroot ${SCHROOT_DIR} /usr/bin/apt-get -y clean
+    mountpoint -q ${SCHROOT_DIR}/${archives} ||\
+        sudo -E chroot ${SCHROOT_DIR} /usr/bin/apt-get -y clean
 }
 addtask install_imager_deps before do_image_tools after do_start_imager_session
 

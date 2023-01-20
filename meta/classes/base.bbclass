@@ -112,8 +112,8 @@ root_cleandirs() {
             die "Could not remove $i, because subdir is mounted"
     done
     for i in $ROOT_CLEANDIRS_DIRS; do
-        sudo rm -rf --one-file-system "$TMPDIR$i"
-        mkdir -p "$TMPDIR$i"
+        sudo /bin/rm -rf --one-file-system "$TMPDIR/$i"
+        mkdir -p "$TMPDIR/$i"
     done
 }
 

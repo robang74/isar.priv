@@ -430,6 +430,9 @@ do_rootfs_finalize() {
         mountpoint -q '${ROOTFSDIR}/sys' && \
             umount -l ${ROOTFSDIR}/sys
 
+        mountpoint -q '${ROOTFSDIR}/var/cache/apt/archives' && \
+            umount -l '${ROOTFSDIR}/var/cache/apt/archives'
+
         aptdir="${ROOTFSDIR}/etc/apt"
         rm -f "${aptdir}/apt.conf.d/50isar"
         rm -f "${aptdir}/preferences.d/isar-apt"
