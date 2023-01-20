@@ -61,7 +61,6 @@ rootfs_do_mounts() {
             mountpoint -q '${ROOTFSDIR}/base-apt' || \
                 mount --bind '${REPO_BASE_DIR}' '${ROOTFSDIR}/base-apt'
         fi
-
 EOSUDO
 }
 
