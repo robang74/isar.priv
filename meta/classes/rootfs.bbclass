@@ -113,6 +113,10 @@ rootfs_configure_apt() {
 EOSUDO
 }
 
+print_num_debs() {
+    bbwarn "$1 ${3:+$3 }deb: $(ls -1 $2/var/cache/apt/archives/*.deb 2>/dev/null | wc -l ||:)"
+}
+
 ROOTFS_INSTALL_COMMAND += "rootfs_import_package_cache"
 rootfs_import_package_cache[weight] = "5"
 rootfs_import_package_cache() {
@@ -120,7 +124,7 @@ rootfs_import_package_cache() {
     deb_dl_dir_import ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
     local ret=$?
     bbwarn "rootfs_import_package_cache lst: $(ls -1 ${ROOTFSDIR}/var/lib/apt/lists/* 2>/dev/null | wc -l)"
-    bbwarn "rootfs_import_package_cache deb: $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
+    print_num_debs rootfs_import_package_cache ${ROOTFSDIR} 
     bbwarn "rootfs_import_package_cache bin: "$(cd ${ROOTFSDIR}/var/cache/apt/ && ls -1 *.bin 2>/dev/null ||:)
     return $ret
 }
@@ -131,7 +135,7 @@ rootfs_install_pkgs_update[isar-apt-lock] = "acquire-before"
 rootfs_install_pkgs_update() {
     set -e
     bbwarn "rootfs_install_pkgs_update 1 lst: $(ls -1 ${ROOTFSDIR}/var/lib/apt/lists/* 2>/dev/null | wc -l)"
-    bbwarn "rootfs_install_pkgs_update 1 deb: $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
+    print_num_debs rootfs_install_pkgs_update ${ROOTFSDIR} 1
     bbwarn "rootfs_install_pkgs_update 1 bin: "$(cd ${ROOTFSDIR}/var/cache/apt/ && ls -1 *.bin 2>/dev/null ||:)
     sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get -y update \
         -o Dir::Etc::SourceList="sources.list.d/isar-apt.list" \
@@ -139,7 +143,7 @@ rootfs_install_pkgs_update() {
         -o APT::Get::List-Cleanup="0"
     ret=$?
     bbwarn "rootfs_install_pkgs_update 2 lst: $(ls -1 ${ROOTFSDIR}/var/lib/apt/lists/* 2>/dev/null | wc -l)"
-    bbwarn "rootfs_install_pkgs_update 2 deb: $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
+    print_num_debs rootfs_install_pkgs_update ${ROOTFSDIR} 2
     bbwarn "rootfs_install_pkgs_update 2 bin: "$(cd ${ROOTFSDIR}/var/cache/apt/ && ls -1 *.bin 2>/dev/null ||:)
     return $ret
 }
@@ -159,13 +163,13 @@ rootfs_install_pkgs_download[isar-apt-lock] = "release-after"
 rootfs_install_pkgs_download() {
     set -e
     bbwarn "rootfs_install_pkgs_update 1 lst: $(ls -1 ${ROOTFSDIR}/var/lib/apt/lists/* 2>/dev/null | wc -l)"
-    bbwarn "rootfs_install_pkgs_update 1 deb: $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
+    print_num_debs rootfs_install_pkgs_download ${ROOTFSDIR} 1
     bbwarn "rootfs_install_pkgs_update 1 bin: "$(cd ${ROOTFSDIR}/var/cache/apt/ && ls -1 *.bin 2>/dev/null ||:)
     sudo -E chroot '${ROOTFSDIR}' \
         /usr/bin/apt-get ${ROOTFS_APT_ARGS} --download-only ${ROOTFS_PACKAGES}
     local ret=$?
     bbwarn "rootfs_install_pkgs_update 2 lst: $(ls -1 ${ROOTFSDIR}/var/lib/apt/lists/* 2>/dev/null | wc -l)"
-    bbwarn "rootfs_install_pkgs_update 2 deb: $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
+    print_num_debs rootfs_install_pkgs_download ${ROOTFSDIR} 2
     bbwarn "rootfs_install_pkgs_update 2 bin: "$(cd ${ROOTFSDIR}/var/cache/apt/ && ls -1 *.bin 2>/dev/null ||:)
     return $ret
 }
@@ -174,9 +178,10 @@ ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_install"
 rootfs_install_pkgs_install[weight] = "8000"
 rootfs_install_pkgs_install() {
     set -e
-    bbwarn "rootfs_install_pkgs_install $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives | wc -l)"
+    print_num_debs rootfs_install_pkgs_install ${ROOTFSDIR} 1
     sudo -E chroot "${ROOTFSDIR}" \
         /usr/bin/apt-get ${ROOTFS_APT_ARGS} -y ${ROOTFS_PACKAGES}
+    print_num_debs rootfs_install_pkgs_install ${ROOTFSDIR} 2
 }
 
 ROOTFS_INSTALL_COMMAND_BEFORE_EXPORT ??= ""
@@ -186,10 +191,10 @@ ROOTFS_INSTALL_COMMAND += "rootfs_export_package_cache"
 rootfs_export_package_cache[weight] = "5"
 rootfs_export_package_cache() {
     set -e
-    bbwarn "rootfs_export_package_cache 1 $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l)"
+    print_num_debs rootfs_export_package_cache ${ROOTFSDIR} 1
     deb_dl_dir_export ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
     local ret=$?
-    bbwarn "rootfs_export_package_cache 2 $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb | wc -l)"
+    print_num_debs rootfs_export_package_cache ${ROOTFSDIR} 2
     return $?
 }
 

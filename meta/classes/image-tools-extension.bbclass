@@ -19,32 +19,27 @@ do_install_imager_deps[depends] = "${SCHROOT_DEP} isar-apt:do_cache_config"
 do_install_imager_deps[deptask] = "do_deploy_deb"
 do_install_imager_deps[lockfiles] += "${REPO_ISAR_DIR}/isar.lock"
 do_install_imager_deps() {
-    if [ -z "${@d.getVar("IMAGER_INSTALL", True).strip()}" ]; then
-        exit
+    local archives="var/cache/apt/archives"
+    if [ -n "${@d.getVar("IMAGER_INSTALL", True).strip()}" ]; then
+        local distro="${BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
+        local session="${SCHROOT_OVERLAY_DIR}/${IMAGER_SCHROOT_SESSION_ID}"
+
+        E="${@ isar_export_proxies(d)}"
+        deb_dl_dir_import ${session}/upper ${distro}
+
+        schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
+            apt-get -y update
+            rm -rf /usr/share/man /usr/share/doc
+            apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends \
+                --allow-unauthenticated --allow-downgrades -y install \
+                ${IMAGER_INSTALL}'
+
+        deb_dl_dir_export ${session}/upper ${distro}
+
+        mountpoint -q ${session}/upper/${archives} ||\
+            schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} \
+                -d / -u root -- sh -c 'apt-get -y clean'
     fi
-
-    distro="${BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
-    if [ ${ISAR_CROSS_COMPILE} -eq 1 ]; then
-        distro="${HOST_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
-    fi
-    session="${SCHROOT_OVERLAY_DIR}/${IMAGER_SCHROOT_SESSION_ID}"
-
-    E="${@ isar_export_proxies(d)}"
-    deb_dl_dir_import ${session}/upper ${distro}
-
-    schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
-        apt-get -y update
-        rm -rf /usr/share/man /usr/share/doc
-        apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends \
-            --allow-unauthenticated --allow-downgrades -y install \
-            ${IMAGER_INSTALL}'
-
-    deb_dl_dir_export ${session}/upper ${distro}
-
-    mountpoint -q ${session}/upper/${archives} ||\
-        schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} \
-            -d / -u root -- sh -c 'apt-get -y clean'
-
     mountpoint -q ${SCHROOT_DIR}/${archives} ||\
         sudo -E chroot ${SCHROOT_DIR} /usr/bin/apt-get -y clean
 }
