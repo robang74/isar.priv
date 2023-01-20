@@ -33,7 +33,7 @@ image_install_localepurge_download() {
 }
 
 ROOTFS_INSTALL_COMMAND_BEFORE_EXPORT += "image_install_localepurge_install"
-image_install_localepurge_install[weight] = "700"
+image_install_localepurge_install[weight] = "350"
 image_install_localepurge_install() {
 
     bbwarn "image_install_localepurge_install 2 deb: $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l ||:)"
@@ -65,11 +65,12 @@ __EOF__
         localepurge_state='i'
         if chroot '${ROOTFSDIR}' dpkg -s localepurge 2>/dev/null >&2
         then
-            : #echo 'localepurge was installed (leaving it installed later)'
+#           echo 'localepurge was installed (leaving it installed later)'
+            echo i >localepurge.state
         else
-            localepurge_state='p'
-            # echo 'localepurge was not installed (removing it later)'
+#           echo 'localepurge was not installed (removing it later)'
             chroot '${ROOTFSDIR}' apt-get ${ROOTFS_APT_ARGS} localepurge
+            echo p >localepurge.state
         fi
 
         cat '${WORKDIR}/locale.gen' >> '${ROOTFSDIR}/etc/locale.gen'
@@ -81,7 +82,7 @@ __EOF__
         chroot '${ROOTFSDIR}' /bin/sh <<'EOSH'
             set -e
 
-            echo 'running locale debconf-set-selections'
+#           echo 'running locale debconf-set-selections'
             debconf-set-selections /tmp/locale.debconf
             rm -f '/tmp/locale.debconf'
 
@@ -93,20 +94,28 @@ __EOF__
                 ln -s /etc/default/locale /etc/locale.conf
             fi
 
-            echo 'reconfigure locales'
+#           echo 'reconfigure locales'
             dpkg-reconfigure -f noninteractive locales
 
-            echo 'running localepurge'
-            localepurge
+#           echo 'running localepurge'
+#           localepurge
 EOSH
-
-        if [ "$localepurge_state" = 'p' ]
-        then
-            echo removing localepurge...
-            chroot '${ROOTFSDIR}' apt-get purge --yes localepurge
-            chroot '${ROOTFSDIR}' apt-get autoremove --purge --yes
-        fi
 EOSUDO
 
     bbwarn "image_install_localepurge_install 2 deb: $(ls -1 ${ROOTFSDIR}/var/cache/apt/archives/*.deb 2>/dev/null | wc -l ||:)"
+}
+
+ROOTFS_INSTALL_COMMAND += "image_install_localepurge_execute"
+image_install_localepurge_execute[weight] = "350"
+image_install_localepurge_execute() {
+        set -e
+        sudo chroot '${ROOTFSDIR}' localepurge
+
+        if [ "$(cat localepurge.state)" == 'p' ]
+        then
+#           echo removing localepurge...
+            sudo chroot '${ROOTFSDIR}' apt-get purge --yes localepurge
+            sudo chroot '${ROOTFSDIR}' apt-get autoremove --purge --yes
+        fi
+        sudo rm -f localepurge.state
 }
