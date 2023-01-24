@@ -74,15 +74,14 @@ dpkg_runbuild() {
         distro="${HOST_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
     fi
 
+    deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}"
+
     deb_dir="/var/cache/apt/archives"
     ext_root="${PP}/rootfs"
     ext_deb_dir="${ext_root}${deb_dir}"
 
-    if [ ${USE_CCACHE} -eq 1 ]; then
-        deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}"
+    if [ ${USE_CCACHE:-0} -eq 1 ]; then
         schroot_configure_ccache
-    else
-        deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}" nolists
     fi
 
     profiles="${@ isar_deb_build_profiles(d)}"
@@ -115,18 +114,15 @@ dpkg_runbuild() {
         --chroot-setup-commands="rm -f /var/log/dpkg.log" \
         --chroot-setup-commands="mount -o bind ${ext_deb_dir} ${deb_dir}" \
         --chroot-setup-commands="export XZ_DEFAULTS='-T 0'" \
+          ${DPKG_SBUILD_EXTRA_ARGS} \
         --finished-build-commands="rm -f ${deb_dir}/sbuild-build-depends-main-dummy_*.deb" \
         --finished-build-commands="umount ${deb_dir}" \
         --finished-build-commands="cp /var/log/dpkg.log ${ext_root}/dpkg_partial.log" \
-        --debbuildopts="--source-option=-I" ${DPKG_SBUILD_EXTRA_ARGS} \
+        --debbuildopts="--source-option=-I" \
         --build-dir=${WORKDIR} --dist="isar" ${DSC_FILE}
 
     sbuild_dpkg_log_export "${WORKDIR}/rootfs/dpkg_partial.log"
-    if [ ${USE_CCACHE} -eq 1 ]; then
-        deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}"
-    else
-        deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}" nolists
-    fi
+    deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}"
 
     # Cleanup apt artifacts
     sudo rm -rf ${WORKDIR}/rootfs
