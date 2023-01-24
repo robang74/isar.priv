@@ -35,6 +35,7 @@ do_install_imager_deps() {
 
     schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
         apt-get -y update
+        export XZ_DEFAULTS="-T 0"
         rm -rf /usr/share/man /usr/share/doc
         apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends \
             --allow-unauthenticated --allow-downgrades -y install \

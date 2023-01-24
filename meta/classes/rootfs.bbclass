@@ -165,8 +165,8 @@ rootfs_install_clean_files() {
 ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_install"
 rootfs_install_pkgs_install[weight] = "8000"
 rootfs_install_pkgs_install() {
-    sudo -E chroot "${ROOTFSDIR}" \
-        /usr/bin/apt-get ${ROOTFS_APT_ARGS} -y ${ROOTFS_PACKAGES}
+    sudo -E chroot "${ROOTFSDIR}" sh -c "export XZ_DEFAULTS='-T 0';
+        /usr/bin/apt-get ${ROOTFS_APT_ARGS} -y ${ROOTFS_PACKAGES}"
 }
 
 do_rootfs_install[root_cleandirs] = "${ROOTFSDIR}"
