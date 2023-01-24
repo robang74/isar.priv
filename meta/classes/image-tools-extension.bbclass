@@ -28,20 +28,22 @@ do_install_imager_deps() {
     if [ ${ISAR_CROSS_COMPILE} -eq 1 ]; then
         distro="${HOST_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
     fi
-    session="${SCHROOT_OVERLAY_DIR}/${IMAGER_SCHROOT_SESSION_ID}"
 
     E="${@ isar_export_proxies(d)}"
-    deb_dl_dir_import ${session}/upper ${distro}
+    deb_dl_dir_import ${SCHROOT_DIR} ${distro}
 
     schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
-        apt-get -y update
         export XZ_DEFAULTS="-T 0"
+        apt-get -y update \
+            -o Dir::Etc::SourceList="sources.list.d/isar-apt.list" \
+            -o Dir::Etc::SourceParts="-" \
+            -o APT::Get::List-Cleanup="0"
         rm -rf /usr/share/man /usr/share/doc
         apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends \
             --allow-unauthenticated --allow-downgrades -y install \
             ${IMAGER_INSTALL}'
 
-    deb_dl_dir_export ${session}/upper ${distro}
+    deb_dl_dir_export ${SCHROOT_DIR} ${distro}
 
     schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
         apt-get -y clean'
