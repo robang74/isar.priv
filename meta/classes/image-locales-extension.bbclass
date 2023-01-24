@@ -69,7 +69,8 @@ __EOF__
         else
             localepurge_state='p'
             echo 'localepurge was not installed (removing it later)'
-            chroot '${ROOTFSDIR}' apt-get ${ROOTFS_APT_ARGS} localepurge
+            chroot '${ROOTFSDIR}' sh -c "export XZ_DEFAULTS='-T 0';
+                apt-get ${ROOTFS_APT_ARGS} localepurge"
         fi
 
         cat '${WORKDIR}/locale.gen' >> '${ROOTFSDIR}/etc/locale.gen'
