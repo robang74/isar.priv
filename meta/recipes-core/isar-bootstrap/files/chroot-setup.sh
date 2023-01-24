@@ -75,6 +75,8 @@ chroot_setup() {
 
 	check_target "${TARGET}" || return 1
 
+	export XZ_DEFAULTS="-T ${XZ_THREADS}"
+
 	# Create a policy-rc.d to stop maintainer scripts using invoke-rc.d
 	# from running init scripts. In case of maintainer scripts that do not
 	# use invoke-rc.d, add a dummy start-stop-daemon.
