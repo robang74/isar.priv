@@ -17,7 +17,7 @@ do_install() {
     . ${O}/.config
 
     kimage="$(${MAKE} O=${O} -s --no-print-directory image_name)"
-    # ARM/ARM64 kernels < 4.12 do not include the path to the kernel
+    # ARM/ARM64 kernels earlier than v4.12 do not include the path to the kernel
     if [ ! -e ${O}/${kimage} ]; then
         kimage="arch/${ARCH}/boot/${kimage}"
     fi
@@ -31,7 +31,7 @@ do_install() {
     print_settings
 
     # Trace what we do here
-    set -x
+    printenv | grep -q BB_VERBOSE_LOGS && set -x
 
     install_image
     if [ "${ARCH}" != "um" ]; then
