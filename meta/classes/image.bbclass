@@ -444,14 +444,13 @@ EOSUDO
     # rootfs image for the purpose of reproducible builds.
     if [ -n "${SOURCE_DATE_EPOCH}" ]; then
         fn="${DEPLOY_DIR_IMAGE}/files.modified_timestamps"
-        sudo find ${ROOTFSDIR} -newermt "$(date -d@"${SOURCE_DATE_EPOCH}" '+%Y-%m-%d %H:%M:%S')" \
-            -printf "%y %p\n" -exec touch '{}' -h -d@${SOURCE_DATE_EPOCH} ';' >"$fn"
-        msg=""
-        ncfs=$(egrep ^f "$fn" | wc -l)
-        if [ $ncfs -gt 0 ]; then
-            msg="\n         List of files modified could be found here: ."${DEPLOY_DIR_IMAGE}"/files.modified_timestamps"
+        if sudo find ${ROOTFSDIR} -newermt "$(date -d@${SOURCE_DATE_EPOCH} '+%Y-%m-%d %H:%M:%S')" \
+            -printf "%y %p\n" -exec touch '{}' -h -d@${SOURCE_DATE_EPOCH} ';' | egrep ^f >"$fn"; then
+            if [ -e "$fn" ]; then
+                bbwarn "modified timestamp (${SOURCE_DATE_EPOCH}) of $(cat "$fn" | wc -l) files for image reproducibly." \
+                       "List of files modified can be found in: .${DEPLOY_DIR_IMAGE}/files.modified_timestamps"
+            fi
         fi
-        bbwarn "Modified timestamp ("${SOURCE_DATE_EPOCH}") of "$ncfs" files for image reproducibly.$msg"
     fi
 }
 do_rootfs_finalize[network] = "${TASK_USE_SUDO}"
