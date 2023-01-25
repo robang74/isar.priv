@@ -8,7 +8,7 @@
 do_configure() {
 
     # Trace what we do here
-    set -x
+    printenv | grep -q BB_VERBOSE_LOGS && set -x
 
     # Process kernel config target and fragments
     ${MAKE} O=${KERNEL_BUILD_DIR} ${KERNEL_CONFIG_TARGET}

@@ -8,7 +8,7 @@
 do_clean() {
 
     # Trace what we do here
-    set -x
+    printenv | grep -q BB_VERBOSE_LOGS && set -x
 
     rm -rf ${deb_img_dir} ${deb_dbg_dir}
     rm -rf ${deb_kern_hdrdir}
