@@ -11,7 +11,7 @@ do_build() {
     print_settings
 
     # Trace what we do here
-    set -x
+    printenv | grep -q BB_VERBOSE_LOGS && set -x
 
     # Process existing kernel configuration to make sure it is complete
     # (use defaults for options that were not specified)
