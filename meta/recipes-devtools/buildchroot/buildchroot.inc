@@ -23,7 +23,16 @@ ROOTFS_MANIFEST_DEPLOY_DIR = "${DEPLOY_DIR_BUILDCHROOT}"
 ROOTFS_DPKGSTATUS_DEPLOY_DIR = "${DEPLOY_DIR_BUILDCHROOT}"
 ROOTFS_FEATURES += "generate-manifest export-dpkg-status"
 
-BUILDCHROOT_PREINSTALL ?= " \
+BUILDCHROOT_COMPAT_PREINSTALL:compat-arch = " \
+    libc6:${COMPAT_DISTRO_ARCH} \
+    crossbuild-essential-${COMPAT_DISTRO_ARCH}"
+
+BUILDCHROOT_PREINSTALL_COMMON = " \
+    ${BUILDCHROOT_COMPAT_PREINSTALL} \
+    make \
+    debhelper \
+    autotools-dev \
+    ${@ 'ccache' if d.getVar('USE_CCACHE') == '1' else ''} \
     dpkg \
     locales \
     apt \
