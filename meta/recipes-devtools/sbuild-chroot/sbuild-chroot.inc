@@ -28,7 +28,7 @@ python() {
                         ' libstdc++-{}-dev:{}'.format(distro_gcc, compat_arch))
 }
 
-SBUILD_CHROOT_COMPAT_PREINSTALL_compat-arch = " \
+SBUILD_CHROOT_COMPAT_PREINSTALL:compat-arch = " \
     libc6-dev:${COMPAT_DISTRO_ARCH} \
     crossbuild-essential-${COMPAT_DISTRO_ARCH}"
 
