@@ -30,6 +30,8 @@ DPKG_SBUILD_EXTRA_ARGS ?= ""
 # Build package from sources using build script
 dpkg_runbuild[vardepsexclude] += "${SBUILD_PASSTHROUGH_ADDITIONS}"
 dpkg_runbuild() {
+    set -ex
+
     E="${@ isar_export_proxies(d)}"
     E="${@ isar_export_ccache(d)}"
     export DEB_BUILD_OPTIONS="${@ isar_deb_build_options(d)}"
@@ -105,10 +107,14 @@ dpkg_runbuild() {
     sh -c "cd ${WORKDIR}; dpkg-source -q -b ${PPS}"
     DSC_FILE=$(find ${WORKDIR} -name "${DEB_SOURCE_NAME}*.dsc" -print)
 
-    sbuild -A -n -c ${SBUILD_CHROOT} --extra-repository="${ISAR_APT_REPO}" \
+    bbwarn "dpkg_runbuild: path $PWD)"
+    bbwarn "dpkg_runbuild: $(sudo find ${SBUILD_CHROOT} -name \*lock)"
+
+    sbuild -D -A -n -c ${SBUILD_CHROOT} --extra-repository="${ISAR_APT_REPO}" \
         --host=${PACKAGE_ARCH} --build=${SBUILD_HOST_ARCH} ${profiles} \
         --no-run-lintian --no-run-piuparts --no-run-autopkgtest --resolve-alternatives \
         --no-apt-update \
+        --chroot-setup-commands="mkdir -p /var/lock" \
         --chroot-setup-commands="echo \"Package: *\nPin: release n=${DEBDISTRONAME}\nPin-Priority: 1000\" > /etc/apt/preferences.d/isar-apt" \
         --chroot-setup-commands="echo \"APT::Get::allow-downgrades 1;\" > /etc/apt/apt.conf.d/50isar-apt" \
         --chroot-setup-commands="rm -f /var/log/dpkg.log" \
