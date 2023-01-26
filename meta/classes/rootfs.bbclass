@@ -81,10 +81,18 @@ BOOTSTRAP_SRC:${ROOTFS_ARCH} = "${DEPLOY_DIR_BOOTSTRAP}/${ROOTFS_DISTRO}-${ROOTF
 
 rootfs_prepare[weight] = "25"
 rootfs_prepare(){
+    set -x
     distro=$(echo ${WORKDIR} | sed -e 's/sbuild-chroot/isar-bootstrap/')
-    bbwarn "rootfs_prepare isar-bootstrap dir: ${distro}"
-    if [ -f ${distro}/rootfs.tar.zstd ]; then
-        bbwarn "rootfs_prepare sstate in ${ROOTFSDIR}"
+    bbwarn "rootfs_prepare pwd: $PWD rootfs: ${ROOTFSDIR} isar-bootstrap dir: ${distro}"
+    mkdir -p ${ROOTFSDIR}
+    if [ -e rootfs.tar.zstd ]; then
+        bbwarn "rootfs_prepare sstate1 in ${ROOTFSDIR}"
+        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf rootfs.tar.zstd
+    elif [ -e ../rootfs.tar.zstd ]; then
+        bbwarn "rootfs_prepare sstate2 in ${ROOTFSDIR}"
+        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ../rootfs.tar.zstd
+    elif [ -e ${distro}/rootfs.tar.zstd ]; then
+        bbwarn "rootfs_prepare sstate3 in ${ROOTFSDIR}"
         sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ${distro}/rootfs.tar.zstd
     else
         bbwarn "rootfs_prepare copy ${BOOTSTRAP_SRC} in ${ROOTFSDIR}"
@@ -381,15 +389,18 @@ do_rootfs_install_sstate_prepare[lockfiles] = "${REPO_ISAR_DIR}/isar.lock"
 
 rootfs_install_sstate_finalize() {
 #   bbdebug 2 
-    bbwarn "rootfs_install_sstate_finalize is running on $PWD, rootfs: "$(du -ms ../rootfs.tar.zstd 2>/dev/null ||:) &
+    bbwarn "rootfs_install_sstate_finalize is running on $PWD, rootfs: "$(du -ms ../rootfs.* rootfs.* 2>/dev/null ||:) &
     # this runs in SSTATE_INSTDIR
     # - after building the rootfs, the tar won't be there, but we also don't need to unpack
     # - after restoring from cache, there will be a tar which we unpack and then delete
+    mv -f rootfs.tar.zstd .. 2>/dev/null ||:
     if [ -f ../rootfs.tar.zstd ]; then
-#       sudo tar --one-file-system -I 'unzstd -T8' -C ${WORKDIR} -xpSf ../rootfs.tar.zstd
-        sudo chown -R $(id -u):$(id -g) "${REPO_ISAR_DIR}"
+        sudo tar --one-file-system -I 'unzstd -T8' -C ${WORKDIR} -xpSf ../rootfs.tar.zstd
         rm -f ../rootfs.tar.zstd
+        mkdir -p "${REPO_ISAR_DIR}"
+        sudo chown -R $(id -u):$(id -g) "${REPO_ISAR_DIR}"
     fi
+    return 0
 }
 
 python do_rootfs_install_setscene() {
