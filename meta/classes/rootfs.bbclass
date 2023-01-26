@@ -34,12 +34,16 @@ rootfs_do_mounts[weight] = "3"
 rootfs_do_mounts() {
     sudo -s <<'EOSUDO'
         set -e
+        mkdir -p '${ROOTFSDIR}/dev/shm'
+        mkdir -p '${ROOTFSDIR}/dev/pts'
         mountpoint -q '${ROOTFSDIR}/dev' || \
             ( mount -o bind,private /dev '${ROOTFSDIR}/dev' &&
               mount -t tmpfs none '${ROOTFSDIR}/dev/shm' &&
               mount --bind /dev/pts '${ROOTFSDIR}/dev/pts' )
+        mkdir -p '${ROOTFSDIR}/proc'
         mountpoint -q '${ROOTFSDIR}/proc' || \
             mount -t proc none '${ROOTFSDIR}/proc'
+        mkdir -p '${ROOTFSDIR}/sys'
         mountpoint -q '${ROOTFSDIR}/sys' || \
             mount --rbind /sys '${ROOTFSDIR}/sys'
         mount --make-rslave '${ROOTFSDIR}/sys'
@@ -77,7 +81,15 @@ BOOTSTRAP_SRC:${ROOTFS_ARCH} = "${DEPLOY_DIR_BOOTSTRAP}/${ROOTFS_DISTRO}-${ROOTF
 
 rootfs_prepare[weight] = "25"
 rootfs_prepare(){
-    sudo cp -Trpfx --reflink=auto '${BOOTSTRAP_SRC}/' '${ROOTFSDIR}'
+    distro=$(echo ${WORKDIR} | sed -e 's/sbuild-chroot/isar-bootstrap/')
+    bbwarn "rootfs_prepare isar-bootstrap dir: ${distro}"
+    if [ -f ${distro}/rootfs.tar.zstd ]; then
+        bbwarn "rootfs_prepare sstate in ${ROOTFSDIR}"
+        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ${distro}/rootfs.tar.zstd
+    else
+        bbwarn "rootfs_prepare copy ${BOOTSTRAP_SRC} in ${ROOTFSDIR}"
+        sudo cp -Trpfx --reflink=auto '${BOOTSTRAP_SRC}/' '${ROOTFSDIR}'
+    fi
 }
 
 ROOTFS_CONFIGURE_COMMAND += "rootfs_configure_isar_apt"
@@ -332,39 +344,49 @@ SSTATEPOSTINSTFUNCS += "rootfs_install_sstate_finalize"
 
 # the rootfs is owned by root, so we need some sudoing to pack and unpack
 rootfs_install_sstate_prepare() {
-    bbdebug 2 "rootfs_install_sstate_prepare is running on ${WORKDIR}/rootfs"\
-" $(sudo du -ms '${WORKDIR}/rootfs' | cut -f1)Mb" &
+#   bbdebug 2
+    bbwarn "rootfs_install_sstate_prepare is running on $PWD, rootfs: "$(sudo du -ms ${WORKDIR}/rootfs 2>/dev/null ||:) &
     # this runs in SSTATE_BUILDDIR, which will be deleted automatically
     # tar --one-file-system will cross bind-mounts to the same filesystem,
     # so we use some mount magic to prevent that
+#   opts=$(echo $ROOTFS_TAR_EXCLUDE_OPTS | tr ' ' '\n' | sed -ne 's,--exclude=",-not -path "$d/,p')
     mkdir -p ${WORKDIR}/mnt/rootfs
+#   d="rootfs"
     sudo -s << EOSUDO
-        set -e
+        set -ex
         mount --bind ${WORKDIR}/rootfs ${WORKDIR}/mnt/rootfs -o ro
+#       find $d $opts -exec zstd --no-progress -2 --adapt -T8 --exclude-compressed --sparse -fmo ${WORKDIR}/mnt/rootfs.zstd {} + 
+#       sudo tar --one-file-system ${ROOTFS_TAR_EXCLUDE_OPTS} \
+#           -C ${WORKDIR}/mnt -cpSf rootfs.tar rootfs
         sudo tar --one-file-system ${ROOTFS_TAR_EXCLUDE_OPTS} \
-            -C ${WORKDIR}/mnt -cpSf rootfs.tar rootfs
+            -I 'zstd --no-progress -2 --adapt -T8' \
+            -C ${WORKDIR}/mnt -cpSf rootfs.tar.zstd rootfs
         umount ${WORKDIR}/mnt/rootfs
-        chown $(id -u):$(id -g) rootfs.tar
+        chown $(id -u):$(id -g) rootfs.tar.zstd
 EOSUDO
+    bbwarn "rootfs_install_sstate_prepare completed: $(du -ms rootfs.tar.zstd) Mb"
+    mv -f rootfs.tar.zstd ..
 }
 do_rootfs_install_sstate_prepare[lockfiles] = "${REPO_ISAR_DIR}/isar.lock"
 
 rootfs_install_sstate_finalize() {
-    bbdebug 2 "rootfs_install_sstate_finalize is running on ${WORKDIR}/rootfs.tar"\
-" $(du -ms rootfs.tar | cut -f1)Mb" &
+#   bbdebug 2 
+    bbwarn "rootfs_install_sstate_finalize is running on $PWD, rootfs: "$(du -ms ../rootfs.tar.zstd 2>/dev/null ||:) &
     # this runs in SSTATE_INSTDIR
     # - after building the rootfs, the tar won't be there, but we also don't need to unpack
     # - after restoring from cache, there will be a tar which we unpack and then delete
-    if [ -f rootfs.tar ]; then
-        sudo tar -C ${WORKDIR} -xpf rootfs.tar
-        rm rootfs.tar
+    if [ -f ../rootfs.tar.zstd ]; then
+#       sudo tar --one-file-system -I 'unzstd -T8' -C ${WORKDIR} -xpSf ../rootfs.tar.zstd
+        sudo chown -R $(id -u):$(id -g) "${REPO_ISAR_DIR}"
+        rm -f ../rootfs.tar.zstd
     fi
 }
 
 python do_rootfs_install_setscene() {
     import inspect
     rfsd = d.getVar("ROOTFSDIR", True) or bb.fatal("ROOTFSDIR is not defined")
-    bb.debug(2, "%s is working on %s" % (rfsd, inspect.stack()[0][3]))
+#   bb.debug(2, "%s is working on %s" % (rfsd, inspect.stack()[0][3]))
+    bb.warn("%s is working on %s" % (rfsd, inspect.stack()[0][3]))
     sstate_setscene(d)
 }
 addtask do_rootfs_install_setscene

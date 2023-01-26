@@ -831,50 +831,73 @@ sstate_task_postfunc[dirs] = "${WORKDIR}"
 # set as SSTATE_BUILDDIR. Will be run from within SSTATE_BUILDDIR.
 #
 sstate_create_package () {
+    ROOTFS_TARBALL="../rootfs.tar.zstd"
+
 	# Exit early if it already exists
 	if [ -e ${SSTATE_PKG} ]; then
-		touch ${SSTATE_PKG} 2>/dev/null || true
+        bbwarn "sstate_create_package found ${SSTATE_PKG}, return."
+		touch ${SSTATE_PKG} 2>/dev/null ||: 
 		return
 	fi
 
 	mkdir --mode=0775 -p $(dirname ${SSTATE_PKG})
-	TFILE=$(mktemp ${SSTATE_PKG}.XXXXXXXX)
-	RFILE=$(mktemp ${SSTATE_PKG}.XXXXXXXX)
 
-	OPT="-cS"
-	ZSTD="zstd -${SSTATE_ZSTD_CLEVEL} -T${ZSTD_THREADS}"
-	# Use pzstd if available
-	if [ -x "$(command -v pzstd)" ]; then
-		ZSTD="pzstd -${SSTATE_ZSTD_CLEVEL} -p ${ZSTD_THREADS}"
-	fi
+    TFILE=$ROOTFS_TARBALL
+    if [ -f $TFILE ]; then
+        bbwarn "sstate_create_package found $(du -ms $TFILE 2>/dev/null ||:)"
+    else
+        bbwarn "sstate_create_package create ${SSTATE_PKG} running in $PWD..."
+	    TFILE=$(mktemp ${SSTATE_PKG}.XXXXXXXX)
 
-	# Need to handle empty directories
-	if [ "$(ls -A)" ]; then
-		set +e
-		tar -I "$ZSTD" $OPT -f $TFILE *
-		ret=$?
-		if [ $ret -ne 0 ] && [ $ret -ne 1 ]; then
-			exit 1
-		fi
-		set -e
-	else
-		tar -I "$ZSTD" $OPT --file=$TFILE --files-from=/dev/null
-	fi
+        OPT="-cS"
+        ZSTD="zstd -${SSTATE_ZSTD_CLEVEL} --adapt -T${ZSTD_THREADS}"
+        # Use pzstd if available
+        #if [ -x "$(command -v pzstd)" ]; then
+        #	ZSTD="pzstd -${SSTATE_ZSTD_CLEVEL} --adapt -p ${ZSTD_THREADS}"
+        #fi
+
+        # Need to handle empty directories
+        if [ "$(ls -A)" ]; then
+            set +e
+            tar -I "$ZSTD" $OPT -f $TFILE *
+            ret=$?
+            if [ $ret -ne 0 ] && [ $ret -ne 1 ]; then
+                exit 1
+            fi
+            set -e
+        else
+            tar -I "$ZSTD" $OPT --file=$TFILE --files-from=/dev/null
+        fi
+    fi
+
 	chmod 0664 "$TFILE"
 	# Skip if it was already created by some other process
 	if [ ! -e "${SSTATE_PKG}" ]; then
 		# Move into place using ln to attempt an atomic op.
 		# Abort if it already exists
-		ln -P "$TFILE" "${SSTATE_PKG}" && rm -f "$TFILE"
-	else
-		rm "$TFILE"
+		ln -P "$TFILE" "${SSTATE_PKG}"
 	fi
 	[ -w "${SSTATE_PKG}" ] && touch "${SSTATE_PKG}"
+
+    if false; then
+        bbwarn "sstate_create_package path $(basename $PWD) PWD=$PWD"
+        if echo $PWD | grep -q "/sstate-build-bootstrap$"; then
+            bbwarn "sstate_create_package copy1 $TFILE $PWD/$ROOTFS_TARBALL"
+            ln -Pf "$TFILE" "$ROOTFS_TARBALL"
+        elif [ "$(basename $PWD)" == "sstate-build-bootstrap" ]; then
+            bbwarn "sstate_create_package copy2 $TFILE $PWD/$ROOTFS_TARBALL"
+            ln -Pf "$TFILE" "$ROOTFS_TARBALL"
+        elif [ "$TFILE" != "$ROOTFS_TARBALL" ]; then 
+            rm -f "$TFILE"
+        fi
+    fi
+    if [ "$TFILE" != "$ROOTFS_TARBALL" ]; then 
+		rm -f "$TFILE"
+    fi
 }
 
 python sstate_sign_package () {
     from oe.gpg_sign import get_signer
-
 
     signer = get_signer(d, 'local')
     sstate_pkg = d.getVar('SSTATE_PKG')
