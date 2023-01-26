@@ -30,8 +30,6 @@ DPKG_SBUILD_EXTRA_ARGS ?= ""
 # Build package from sources using build script
 dpkg_runbuild[vardepsexclude] += "${SBUILD_PASSTHROUGH_ADDITIONS}"
 dpkg_runbuild() {
-    set -ex
-
     E="${@ isar_export_proxies(d)}"
     E="${@ isar_export_ccache(d)}"
     export DEB_BUILD_OPTIONS="${@ isar_deb_build_options(d)}"

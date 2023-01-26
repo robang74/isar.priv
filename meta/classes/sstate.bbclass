@@ -922,17 +922,29 @@ python sstate_report_unihash() {
 sstate_unpack_package () {
 	ZSTD="zstd -T${ZSTD_THREADS}"
 	# Use pzstd if available
-	if [ -x "$(command -v pzstd)" ]; then
-		ZSTD="pzstd -p ${ZSTD_THREADS}"
-	fi
+	#if [ -x "$(command -v pzstd)" ]; then
+	#	ZSTD="pzstd -p ${ZSTD_THREADS}"
+	#fi
 
-	tar -I "$ZSTD" -xvpf ${SSTATE_PKG}
+    bbwarn "sstate_unpack_package running in ${PWD}..."
+
+    if echo ${SSTATE_PKG} | grep rootfs; then
+        ln -Pf ${SSTATE_PKG} rootfs.tar.zstd
+    else
+	    tar -I "$ZSTD" -xvpf ${SSTATE_PKG}
+    fi
 	# update .siginfo atime on local/NFS mirror if it is a symbolic link
 	[ ! -h ${SSTATE_PKG}.siginfo ] || [ ! -e ${SSTATE_PKG}.siginfo ] || touch -a ${SSTATE_PKG}.siginfo 2>/dev/null || true
 	# update each symbolic link instead of any referenced file
 	touch --no-dereference ${SSTATE_PKG} 2>/dev/null || true
 	[ ! -e ${SSTATE_PKG}.sig ] || touch --no-dereference ${SSTATE_PKG}.sig 2>/dev/null || true
 	[ ! -e ${SSTATE_PKG}.siginfo ] || touch --no-dereference ${SSTATE_PKG}.siginfo 2>/dev/null || true
+
+    if [ -e rootfs.tar.zstd ]; then
+        mkdir -p ${WORKDIR}/rootfs
+        ln -Pf rootfs.tar.zstd ${WORKDIR}
+    fi
+    bbwarn "sstate_unpack_package completed: "$(du -ms ${WORKDIR}/rootfs.tar.zstd 2>/dev/null ||:)
 }
 
 BB_HASHCHECK_FUNCTION = "sstate_checkhashes"
