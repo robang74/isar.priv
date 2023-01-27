@@ -88,18 +88,23 @@ rootfs_prepare(){
     if [ -e $rfile ]; then
         bbwarn "rootfs_prepare sstate1 in ${ROOTFSDIR}"
         sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf $rfile
+        rm -f $rfile
     elif [ -e ../$rfile ]; then
         bbwarn "rootfs_prepare sstate2 in ${ROOTFSDIR}"
         sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ../$rfile
+        rm -f ../$rfile
     elif [ -e ${distro}/$rfile ]; then
         bbwarn "rootfs_prepare sstate3 in ${ROOTFSDIR}"
         sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ${distro}/$rfile
+        rm -f ${distro}/$rfile
     elif [ -e ${WORKDIR}/$rfile ]; then
         bbwarn "rootfs_prepare sstate4 in ${WORKDIR}"
         sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ${WORKDIR}/$rfile
+        rm -f ${WORKDIR}/$rfile
     elif [ -e ${ROOTFSDIR}/../$rfile ]; then
         bbwarn "rootfs_prepare sstate5 in ${ROOTFSDIR}/.."
         sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ${ROOTFSDIR}/../$rfile
+        rm -f ${ROOTFSDIR}/../$rfile
     else
         bbwarn "rootfs_prepare copy ${BOOTSTRAP_SRC} in ${ROOTFSDIR}"
         sudo cp -Trpfx --reflink=auto '${BOOTSTRAP_SRC}/' '${ROOTFSDIR}'
@@ -394,18 +399,20 @@ EOSUDO
 do_rootfs_install_sstate_prepare[lockfiles] = "${REPO_ISAR_DIR}/isar.lock"
 
 rootfs_install_sstate_finalize() {
-#   bbdebug 2 
-    bbwarn "rootfs_install_sstate_finalize is running on $PWD, rootfs: "$(du -ms ../rootfs.* rootfs.* 2>/dev/null ||:) &
+#   bbdebug 2
+    bbwarn "rootfs_install_sstate_finalize is running on $PWD, workdir: ${WORKDIR} cache: "$(du -ms ../rootfs.* rootfs.* 2>/dev/null ||:) &
     # this runs in SSTATE_INSTDIR
     # - after building the rootfs, the tar won't be there, but we also don't need to unpack
     # - after restoring from cache, there will be a tar which we unpack and then delete
     mv -f rootfs.tar.zstd .. 2>/dev/null ||:
-    if [ -f ../rootfs.tar.zstd ]; then
+    if [ ! -d ${WORKDIR}/rootfs/usr/bin ]; then
+        test -f ../rootfs.tar.zstd || return 1
         sudo tar --one-file-system -I 'unzstd -T8' -C ${WORKDIR} -xpSf ../rootfs.tar.zstd
-        rm -f ../rootfs.tar.zstd
-        mkdir -p "${REPO_ISAR_DIR}"
-        sudo chown -R $(id -u):$(id -g) "${REPO_ISAR_DIR}"
+        bbwarn "rootfs_install_sstate_finalize populated "$(du -ms ${WORKDIR}/rootfs)
     fi
+    mkdir -p "${REPO_ISAR_DIR}"
+    sudo chown -R $(id -u):$(id -g) "${REPO_ISAR_DIR}"
+    rm -f ../rootfs.tar.zstd 2>/dev/null
     return 0
 }
 
