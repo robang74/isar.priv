@@ -411,7 +411,7 @@ bootstrap_sstate_prepare() {
     sudo tar ${ROOTFS_TAR_EXCLUDE_OPTS} -I 'zstd --no-progress -2 --adapt -T8' \
         -C "${ROOTFSDIR}" -cpSf ../bootstrap.tar.zstd .
     sudo chown $(id -u):$(id -g) ../bootstrap.tar.zstd
-    bbwarn "bootstrap_sstate_prepare completed: "$(du -ms ../bootstrap.tar.zstd)
+    bbwarn "bootstrap_sstate_prepare completed: "$(du -ms $PWD/../bootstrap.tar.zstd)
 }
 
 bootstrap_sstate_finalize() {
@@ -420,9 +420,9 @@ bootstrap_sstate_finalize() {
     # - after building the bootstrap, the tar won't be there, but we also don't need to unpack
     # - after restoring from cache, there will be a tar which we unpack and then delete
     if [ -f ../bootstrap.tar.zstd ]; then
-        sudo tar -I 'unzstd -T8' -C "${ROOTFSDIR}" -xpf ../bootstrap.tar.zstd
+        sudo tar -I 'unzstd -T8' -C "${ROOTFSDIR}" -xpSf ../bootstrap.tar.zstd
         sudo ln -Tfsr "${ROOTFSDIR}" "${DEPLOY_ISAR_BOOTSTRAP}"
-        rm -f ../bootstrap.tar.zstd
+#       rm -f ../bootstrap.tar.zstd
     fi
 }
 
