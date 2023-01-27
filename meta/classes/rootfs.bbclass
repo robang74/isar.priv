@@ -81,19 +81,25 @@ BOOTSTRAP_SRC:${ROOTFS_ARCH} = "${DEPLOY_DIR_BOOTSTRAP}/${ROOTFS_DISTRO}-${ROOTF
 
 rootfs_prepare[weight] = "25"
 rootfs_prepare(){
-    set -x
+    rfile="bootstrap.tar.zstd"
     distro=$(echo ${WORKDIR} | sed -e 's/sbuild-chroot/isar-bootstrap/')
-    bbwarn "rootfs_prepare pwd: $PWD rootfs: ${ROOTFSDIR} isar-bootstrap dir: ${distro}"
+    bbwarn "rootfs_prepare pwd: $PWD rootfs: ${ROOTFSDIR} isar: ${distro} work: ${WORKDIR}"
     mkdir -p ${ROOTFSDIR}
-    if [ -e rootfs.tar.zstd ]; then
+    if [ -e $rfile ]; then
         bbwarn "rootfs_prepare sstate1 in ${ROOTFSDIR}"
-        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf rootfs.tar.zstd
-    elif [ -e ../rootfs.tar.zstd ]; then
+        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf $rfile
+    elif [ -e ../$rfile ]; then
         bbwarn "rootfs_prepare sstate2 in ${ROOTFSDIR}"
-        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ../rootfs.tar.zstd
-    elif [ -e ${distro}/rootfs.tar.zstd ]; then
+        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ../$rfile
+    elif [ -e ${distro}/$rfile ]; then
         bbwarn "rootfs_prepare sstate3 in ${ROOTFSDIR}"
-        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ${distro}/rootfs.tar.zstd
+        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ${distro}/$rfile
+    elif [ -e ${WORKDIR}/$rfile ]; then
+        bbwarn "rootfs_prepare sstate4 in ${WORKDIR}"
+        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ${WORKDIR}/$rfile
+    elif [ -e ${ROOTFSDIR}/../$rfile ]; then
+        bbwarn "rootfs_prepare sstate5 in ${ROOTFSDIR}/.."
+        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ${ROOTFSDIR}/../$rfile
     else
         bbwarn "rootfs_prepare copy ${BOOTSTRAP_SRC} in ${ROOTFSDIR}"
         sudo cp -Trpfx --reflink=auto '${BOOTSTRAP_SRC}/' '${ROOTFSDIR}'
@@ -372,7 +378,7 @@ rootfs_install_sstate_prepare() {
         umount ${WORKDIR}/mnt/rootfs
         chown $(id -u):$(id -g) rootfs.tar.zstd
 EOSUDO
-    bbwarn "rootfs_install_sstate_prepare completed: $(du -ms rootfs.tar.zstd) Mb"
+    bbwarn "rootfs_install_sstate_prepare completed: "$(du -ms rootfs.tar.zstd)
     mv -f rootfs.tar.zstd ..
 }
 do_rootfs_install_sstate_prepare[lockfiles] = "${REPO_ISAR_DIR}/isar.lock"

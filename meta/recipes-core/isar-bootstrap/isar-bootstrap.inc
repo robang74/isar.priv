@@ -406,22 +406,23 @@ SSTATECREATEFUNCS += "bootstrap_sstate_prepare"
 SSTATEPOSTINSTFUNCS += "bootstrap_sstate_finalize"
 
 bootstrap_sstate_prepare() {
-    bbwarn "bootstrap_sstate_prepare pwd:$PWD"
-    bbwarn "bootstrap_sstate_prepare rootfs: ${ROOTFSDIR} $(sudo find ${ROOTFSDIR} | wc -l)"
+    bbwarn "bootstrap_sstate_prepare running in $PWD rootfs ${ROOTFSDIR} files:"$(sudo find ${ROOTFSDIR} | wc -l)
     # this runs in SSTATE_BUILDDIR, which will be deleted automatically
     sudo tar ${ROOTFS_TAR_EXCLUDE_OPTS} -I 'zstd --no-progress -2 --adapt -T8' \
-        -C "${ROOTFSDIR}" -cpSf ../rootfs.tar.zstd .
-    sudo chown $(id -u):$(id -g) ../rootfs.tar.zstd
+        -C "${ROOTFSDIR}" -cpSf ../bootstrap.tar.zstd .
+    sudo chown $(id -u):$(id -g) ../bootstrap.tar.zstd
+    bbwarn "bootstrap_sstate_prepare completed: "$(du -ms ../bootstrap.tar.zstd)
 }
 
 bootstrap_sstate_finalize() {
+    bbwarn "bootstrap_sstate_finalize is running in $PWD rootfs ${ROOTFSDIR} bootstrap ${DEPLOY_ISAR_BOOTSTRAP}"
     # this runs in SSTATE_INSTDIR
     # - after building the bootstrap, the tar won't be there, but we also don't need to unpack
     # - after restoring from cache, there will be a tar which we unpack and then delete
-    if [ -f ../rootfs.tar.zstd ]; then
-        sudo tar -I 'unzstd -T8' -C "${ROOTFSDIR}" -xpf ../rootfs.tar.zstd
+    if [ -f ../bootstrap.tar.zstd ]; then
+        sudo tar -I 'unzstd -T8' -C "${ROOTFSDIR}" -xpf ../bootstrap.tar.zstd
         sudo ln -Tfsr "${ROOTFSDIR}" "${DEPLOY_ISAR_BOOTSTRAP}"
-        rm -f ../rootfs.tar.zstd
+        rm -f ../bootstrap.tar.zstd
     fi
 }
 
