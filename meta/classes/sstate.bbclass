@@ -831,8 +831,6 @@ sstate_task_postfunc[dirs] = "${WORKDIR}"
 # set as SSTATE_BUILDDIR. Will be run from within SSTATE_BUILDDIR.
 #
 sstate_create_package () {
-    ROOTFS_TARBALL="../rootfs.tar.zstd"
-
 	# Exit early if it already exists
 	if [ -e ${SSTATE_PKG} ]; then
         bbwarn "sstate_create_package found ${SSTATE_PKG}, return."
@@ -842,14 +840,19 @@ sstate_create_package () {
 
 	mkdir --mode=0775 -p $(dirname ${SSTATE_PKG})
 
-    TFILE=$ROOTFS_TARBALL
-    if [ -f $TFILE ]; then
-        bbwarn "sstate_create_package found $(du -ms $TFILE 2>/dev/null ||:)"
+    if [ -f "../rootfs.tar.zstd" ]; then
+        norm=1
+        TFILE="../rootfs.tar.zstd"
+        bbwarn "sstate_create_package found "$(du -ms $PWD/$TFILE 2>/dev/null ||:)
+    elif [ -f "../bootstrap.tar.zstd" ]; then
+        norm=1
+        TFILE="../bootstrap.tar.zstd"
+        bbwarn "sstate_create_package found "$(du -ms $PWD/$TFILE 2>/dev/null ||:)
     else
         bbwarn "sstate_create_package create ${SSTATE_PKG} running in $PWD..."
 	    TFILE=$(mktemp ${SSTATE_PKG}.XXXXXXXX)
 
-        OPT="-cS"
+        OPT="-cpS"
         ZSTD="zstd -${SSTATE_ZSTD_CLEVEL} --adapt -T${ZSTD_THREADS}"
         # Use pzstd if available
         #if [ -x "$(command -v pzstd)" ]; then
@@ -872,12 +875,15 @@ sstate_create_package () {
 
 	chmod 0664 "$TFILE"
 	# Skip if it was already created by some other process
-	if [ ! -e "${SSTATE_PKG}" ]; then
+	#if [ ! -e "${SSTATE_PKG}" ]; then
 		# Move into place using ln to attempt an atomic op.
 		# Abort if it already exists
-		ln -P "$TFILE" "${SSTATE_PKG}"
-	fi
-	[ -w "${SSTATE_PKG}" ] && touch "${SSTATE_PKG}"
+	#	ln -P "$TFILE" "${SSTATE_PKG}"
+	#fi
+	#[ -w "${SSTATE_PKG}" ] && touch "${SSTATE_PKG}"
+
+    ln -Pf "$TFILE" "${SSTATE_PKG}"
+    bbwarn "sstate_create_package saved "$(du -ms ${SSTATE_PKG})
 
     if false; then
         bbwarn "sstate_create_package path $(basename $PWD) PWD=$PWD"
@@ -887,11 +893,12 @@ sstate_create_package () {
         elif [ "$(basename $PWD)" == "sstate-build-bootstrap" ]; then
             bbwarn "sstate_create_package copy2 $TFILE $PWD/$ROOTFS_TARBALL"
             ln -Pf "$TFILE" "$ROOTFS_TARBALL"
-        elif [ "$TFILE" != "$ROOTFS_TARBALL" ]; then 
+        elif [ "$TFILE" != "$ROOTFS_TARBALL" ]; then
             rm -f "$TFILE"
         fi
     fi
-    if [ "$TFILE" != "$ROOTFS_TARBALL" ]; then 
+    if [ -z "$norm" ]; then
+        bbwarn "sstate_create_package remove $TFILE"
 		rm -f "$TFILE"
     fi
 }
@@ -929,10 +936,15 @@ sstate_unpack_package () {
     bbwarn "sstate_unpack_package running in ${PWD}..."
 
     if echo ${SSTATE_PKG} | grep rootfs; then
-        ln -Pf ${SSTATE_PKG} rootfs.tar.zstd
+        pkgname="rootfs.tar.zstd"
+        ln -Pf ${SSTATE_PKG} $pkgname
+    elif echo ${SSTATE_PKG} | grep bootstrap; then
+        pkgname="bootstrap.tar.zstd"
+        ln -Pf ${SSTATE_PKG} $pkgname
     else
 	    tar -I "$ZSTD" -xvpf ${SSTATE_PKG}
     fi
+
 	# update .siginfo atime on local/NFS mirror if it is a symbolic link
 	[ ! -h ${SSTATE_PKG}.siginfo ] || [ ! -e ${SSTATE_PKG}.siginfo ] || touch -a ${SSTATE_PKG}.siginfo 2>/dev/null || true
 	# update each symbolic link instead of any referenced file
@@ -940,11 +952,12 @@ sstate_unpack_package () {
 	[ ! -e ${SSTATE_PKG}.sig ] || touch --no-dereference ${SSTATE_PKG}.sig 2>/dev/null || true
 	[ ! -e ${SSTATE_PKG}.siginfo ] || touch --no-dereference ${SSTATE_PKG}.siginfo 2>/dev/null || true
 
-    if [ -e rootfs.tar.zstd ]; then
+    if [ -e "${pkgname:-}" ]; then
         mkdir -p ${WORKDIR}/rootfs
-        ln -Pf rootfs.tar.zstd ${WORKDIR}
+        ln -Pf ${pkgname} ${WORKDIR}
     fi
-    bbwarn "sstate_unpack_package completed: "$(du -ms ${WORKDIR}/rootfs.tar.zstd 2>/dev/null ||:)
+
+    bbwarn "sstate_unpack_package completed: "$(du -ms ${WORKDIR}/${pkgname} 2>/dev/null ||:)
 }
 
 BB_HASHCHECK_FUNCTION = "sstate_checkhashes"
