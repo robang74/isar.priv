@@ -374,18 +374,18 @@ SSTATEPOSTINSTFUNCS += "rootfs_install_sstate_finalize"
 # the rootfs is owned by root, so we need some sudoing to pack and unpack
 rootfs_install_sstate_prepare() {
 #   bbdebug 2
+#   opts=$(echo $ROOTFS_TAR_EXCLUDE_OPTS | tr ' ' '\n' | sed -ne 's,--exclude=",-not -path "$d/,p')
+#   d="rootfs"
+#       find $d $opts -exec zstd --no-progress -2 --adapt -T8
+#           --exclude-compressed --sparse -fmo ${WORKDIR}/mnt/rootfs.zstd {} +
     bbwarn "rootfs_install_sstate_prepare is running on $PWD, rootfs: "$(sudo du -ms ${WORKDIR}/rootfs 2>/dev/null ||:) &
     # this runs in SSTATE_BUILDDIR, which will be deleted automatically
     # tar --one-file-system will cross bind-mounts to the same filesystem,
     # so we use some mount magic to prevent that
-#   opts=$(echo $ROOTFS_TAR_EXCLUDE_OPTS | tr ' ' '\n' | sed -ne 's,--exclude=",-not -path "$d/,p')
     mkdir -p ${WORKDIR}/mnt/rootfs
-#   d="rootfs"
     sudo -s << EOSUDO
-        set -ex
+        set -e
         mount --bind ${WORKDIR}/rootfs ${WORKDIR}/mnt/rootfs -o ro
-#       find $d $opts -exec zstd --no-progress -2 --adapt -T8
-#           --exclude-compressed --sparse -fmo ${WORKDIR}/mnt/rootfs.zstd {} +
         sudo tar --one-file-system ${ROOTFS_TAR_EXCLUDE_OPTS} \
             -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" \
             -C ${WORKDIR}/mnt -cpSf rootfs.tar.zstd rootfs
@@ -406,7 +406,7 @@ rootfs_install_sstate_finalize() {
     mv -f rootfs.tar.zstd .. 2>/dev/null ||:
     if [ ! -d ${WORKDIR}/rootfs/usr/bin ]; then
         test -f ../rootfs.tar.zstd || return 1
-        sudo tar --one-file-system -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${WORKDIR} -xpSf ../rootfs.tar.zstd
+        sudo tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${WORKDIR} -xpSf ../rootfs.tar.zstd
         bbwarn "rootfs_install_sstate_finalize populated "$(du -ms ${WORKDIR}/rootfs)
     fi
     mkdir -p "${REPO_ISAR_DIR}"
