@@ -23,7 +23,7 @@ APTSRCS_INIT = "${WORKDIR}/apt-sources-init"
 DISTRO_BOOTSTRAP_KEYFILES = ""
 THIRD_PARTY_APT_KEYFILES = ""
 DEPLOY_ISAR_BOOTSTRAP ?= ""
-DISTRO_BOOTSTRAP_BASE_PACKAGES = "locales"
+DISTRO_BOOTSTRAP_BASE_PACKAGES = "locales,time"
 DISTRO_BOOTSTRAP_BASE_PACKAGES:append:gnupg = ",gnupg"
 DISTRO_BOOTSTRAP_BASE_PACKAGES:append:https-support = ",ca-certificates"
 DISTRO_VARS_PREFIX ?= "${@'HOST_' if d.getVar('BOOTSTRAP_FOR_HOST') == '1' else ''}"
@@ -406,16 +406,18 @@ SSTATECREATEFUNCS += "bootstrap_sstate_prepare"
 SSTATEPOSTINSTFUNCS += "bootstrap_sstate_finalize"
 
 bootstrap_sstate_prepare() {
-    bbwarn "bootstrap_sstate_prepare running in $PWD rootfs ${ROOTFSDIR} files:"$(sudo find ${ROOTFSDIR} | wc -l)
+    set -e
+    bbwarn "bootstrap_sstate_prepare running\n\t pwd:  $PWD\n\t rootfs: ${ROOTFSDIR}\n\t files: "$(sudo find ${ROOTFSDIR} | wc -l)
     # this runs in SSTATE_BUILDDIR, which will be deleted automatically
     sudo tar ${ROOTFS_TAR_EXCLUDE_OPTS} -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" \
         -C "${ROOTFSDIR}" -cpSf ../bootstrap.tar.zstd .
     sudo chown $(id -u):$(id -g) ../bootstrap.tar.zstd
-    bbwarn "bootstrap_sstate_prepare completed: "$(du -ms $PWD/../bootstrap.tar.zstd)
+    bbwarn "bootstrap_sstate_prepare\n\t completed: "$(du -ms $PWD/../bootstrap.tar.zstd)
 }
 
 bootstrap_sstate_finalize() {
-    bbwarn "bootstrap_sstate_finalize is running in $PWD rootfs ${ROOTFSDIR} bootstrap ${DEPLOY_ISAR_BOOTSTRAP}"
+    set -e
+    bbwarn "bootstrap_sstate_finalize is running\n\t pwd: $PWD\n\t rootfs: ${ROOTFSDIR}\n\t bootstrap: ${DEPLOY_ISAR_BOOTSTRAP}"
     # this runs in SSTATE_INSTDIR
     # - after building the bootstrap, the tar won't be there, but we also don't need to unpack
     # - after restoring from cache, there will be a tar which we unpack and then delete
@@ -426,6 +428,8 @@ bootstrap_sstate_finalize() {
 }
 
 python do_bootstrap_setscene() {
+    rfsd = d.getVar("ROOTFSDIR", True) or bb.fatal("ROOTFSDIR is not defined")
+    bb.warn("do_bootstrap_setscene is running\n\t rootfs: %s" % rfsd)
     sstate_setscene(d)
 }
 

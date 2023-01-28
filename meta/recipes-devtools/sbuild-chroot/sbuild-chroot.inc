@@ -29,7 +29,7 @@ python() {
 }
 
 SBUILD_CHROOT_COMPAT_PREINSTALL:compat-arch = " \
-    libc6-dev:${COMPAT_DISTRO_ARCH} \
+    libc6-dev:${COMPAT_DISTRO_ARCH} time \
     crossbuild-essential-${COMPAT_DISTRO_ARCH}"
 
 SBUILD_CHROOT_PREINSTALL_COMMON = " \
