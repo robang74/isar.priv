@@ -82,10 +82,8 @@ BOOTSTRAP_SRC:${ROOTFS_ARCH} = "${DEPLOY_DIR_BOOTSTRAP}/${ROOTFS_DISTRO}-${ROOTF
 rootfs_prepare[weight] = "25"
 rootfs_prepare(){
     set -e
-
-    test -d ${ROOTFSDIR}/usr/bin && return 0
-
     local distro rfile
+    test -d ${ROOTFSDIR}/usr/bin && return 0
 #   local time=/build/tmp/work/debian-bullseye-amd64/isar-bootstrap-target/1.0-r0/rootfs/usr/bin/time
 
     if [ -e rootfs.tar.zstd ]; then
@@ -94,15 +92,17 @@ rootfs_prepare(){
         distro=$(readlink -f ${BOOTSTRAP_SRC})
         rfile="${distro%/*}/bootstrap.tar.zstd"
     fi
-    bbwarn "rootfs_prepare\n\t rfile: $rfile\n\t pwd: $PWD\n\t distro: ${distro}\n\t work: ${WORKDIR}\n\t rootfs: ${ROOTFSDIR}\n\t tbootstrap: ${BOOTSTRAP_SRC}"
+
+    bbwarn "rootfs_prepare in pwd: $PWD\n\t rfile: $rfile\n\t distro: ${distro}\n\t"\
+        "work: ${WORKDIR}\n\t rootfs: ${ROOTFSDIR}\n\t bootstrap: ${BOOTSTRAP_SRC}"
     mkdir -p ${ROOTFSDIR}
     if [ -e "$rfile" ]; then
         bbwarn "rootfs_prepare\n\t sstate: $rfile\n\t rootfs: ${ROOTFSDIR}"
         $time sudo tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${ROOTFSDIR} \
-            -xpSf "$rfile" || return $?
-#       rm -f "$rfile"
-        return 0
+            -xpSf "$rfile"
+        return $?
     fi
+
     bbwarn "rootfs_prepare\n\t copy: ${BOOTSTRAP_SRC}\n\t rootfs: ${ROOTFSDIR}"
     $time sudo cp -Trpfx --reflink=auto '${BOOTSTRAP_SRC}/' '${ROOTFSDIR}'
 }
@@ -225,7 +225,8 @@ python do_rootfs_install() {
     progress_reporter = bb.progress.MultiStageProgressReporter(d, stage_weights)
 
     for cmd in cmds:
-        bb.debug(2, "%s is proceding with cmd: %s" % (inspect.stack()[0][3], cmd))
+#       bb.debug 2
+        bb.warn("%s is proceding with cmd: %s" % (inspect.stack()[0][3], cmd))
         progress_reporter.next_stage()
 
         if (d.getVarFlag(cmd, 'isar-apt-lock') or "") == "acquire-before":
@@ -364,13 +365,16 @@ rootfs_install_sstate_prepare() {
 #   d="rootfs"
 #       find $d $opts -exec zstd --no-progress -2 --adapt -T8
 #           --exclude-compressed --sparse -fmo ${WORKDIR}/mnt/rootfs.zstd {} +
-    bbwarn "rootfs_install_sstate_prepare is running\n\t pwd: $PWD\n\t rootfs: "$(sudo du -ms ${WORKDIR}/rootfs 2>/dev/null ||:) &
+
+    set -e
+    bbwarn "rootfs_install_sstate_prepare\n\t pwd: $PWD\n\t rootfs: "$(sudo du -ms ${WORKDIR}/rootfs 2>/dev/null ||:)
     # this runs in SSTATE_BUILDDIR, which will be deleted automatically
     # tar --one-file-system will cross bind-mounts to the same filesystem,
     # so we use some mount magic to prevent that
     mkdir -p ${WORKDIR}/mnt/rootfs
     sudo -s << EOSUDO
         set -e
+        rm -f ../rootfs.tar.zstd 2>/dev/null
         mount --bind ${WORKDIR}/rootfs ${WORKDIR}/mnt/rootfs -o ro
         sudo tar --one-file-system ${ROOTFS_TAR_EXCLUDE_OPTS} \
             -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" \
@@ -387,7 +391,7 @@ rootfs_install_sstate_finalize() {
     set -e
 
 #   bbdebug 2
-    bbwarn "rootfs_install_sstate_finalize is running\n\t pwd: $PWD\n\t workdir: ${WORKDIR}\n\t cache: "$(du -ms ../rootfs.* rootfs.* 2>/dev/null ||:) &
+    bbwarn "rootfs_install_sstate_finalize\n\t pwd: $PWD\n\t workdir: ${WORKDIR}\n\t cache: "$(du -ms ../rootfs.* rootfs.* 2>/dev/null ||:) &
     # this runs in SSTATE_INSTDIR
     # - after building the rootfs, the tar won't be there, but we also don't need to unpack
     # - after restoring from cache, there will be a tar which we unpack and then delete
@@ -407,7 +411,7 @@ rootfs_install_sstate_finalize() {
 
 python do_rootfs_install_setscene() {
     rfsd = d.getVar("ROOTFSDIR", True) or bb.fatal("ROOTFSDIR is not defined")
-    bb.warn("do_rootfs_install_setscene is running\n\t rootfs: %s" % rfsd)
+    bb.warn("do_rootfs_install_setscene\n\t rootfs: %s" % rfsd)
     sstate_setscene(d)
 }
 addtask do_rootfs_install_setscene
