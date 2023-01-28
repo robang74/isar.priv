@@ -834,70 +834,43 @@ sstate_create_package () {
 	# Exit early if it already exists
 	if [ -e ${SSTATE_PKG} ]; then
         bbwarn "sstate_create_package found ${SSTATE_PKG}, return."
-		touch ${SSTATE_PKG} 2>/dev/null ||: 
+		touch ${SSTATE_PKG} 2>/dev/null ||:
 		return
 	fi
 
 	mkdir --mode=0775 -p $(dirname ${SSTATE_PKG})
 
     if [ -f "../rootfs.tar.zstd" ]; then
-        norm=1
+        rmno=1
         TFILE="../rootfs.tar.zstd"
         bbwarn "sstate_create_package found "$(du -ms $PWD/$TFILE 2>/dev/null ||:)
     elif [ -f "../bootstrap.tar.zstd" ]; then
-        norm=1
+        rmno=1
         TFILE="../bootstrap.tar.zstd"
         bbwarn "sstate_create_package found "$(du -ms $PWD/$TFILE 2>/dev/null ||:)
     else
         bbwarn "sstate_create_package create ${SSTATE_PKG} running in $PWD..."
 	    TFILE=$(mktemp ${SSTATE_PKG}.XXXXXXXX)
 
-        OPT="-cpS"
-        ZSTD="zstd -${SSTATE_ZSTD_CLEVEL} --adapt -T${ZSTD_THREADS}"
-        # Use pzstd if available
-        #if [ -x "$(command -v pzstd)" ]; then
-        #	ZSTD="pzstd -${SSTATE_ZSTD_CLEVEL} --adapt -p ${ZSTD_THREADS}"
-        #fi
-
         # Need to handle empty directories
         if [ "$(ls -A)" ]; then
             set +e
-            tar -I "$ZSTD" $OPT -f $TFILE *
+            tar -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" -cpSf $TFILE *
             ret=$?
             if [ $ret -ne 0 ] && [ $ret -ne 1 ]; then
                 exit 1
             fi
             set -e
         else
-            tar -I "$ZSTD" $OPT --file=$TFILE --files-from=/dev/null
+            tar -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" -cpSf $TFILE --files-from=/dev/null
         fi
     fi
 
 	chmod 0664 "$TFILE"
-	# Skip if it was already created by some other process
-	#if [ ! -e "${SSTATE_PKG}" ]; then
-		# Move into place using ln to attempt an atomic op.
-		# Abort if it already exists
-	#	ln -P "$TFILE" "${SSTATE_PKG}"
-	#fi
-	#[ -w "${SSTATE_PKG}" ] && touch "${SSTATE_PKG}"
-
     ln -Pf "$TFILE" "${SSTATE_PKG}"
     bbwarn "sstate_create_package saved "$(du -ms ${SSTATE_PKG})
 
-    if false; then
-        bbwarn "sstate_create_package path $(basename $PWD) PWD=$PWD"
-        if echo $PWD | grep -q "/sstate-build-bootstrap$"; then
-            bbwarn "sstate_create_package copy1 $TFILE $PWD/$ROOTFS_TARBALL"
-            ln -Pf "$TFILE" "$ROOTFS_TARBALL"
-        elif [ "$(basename $PWD)" == "sstate-build-bootstrap" ]; then
-            bbwarn "sstate_create_package copy2 $TFILE $PWD/$ROOTFS_TARBALL"
-            ln -Pf "$TFILE" "$ROOTFS_TARBALL"
-        elif [ "$TFILE" != "$ROOTFS_TARBALL" ]; then
-            rm -f "$TFILE"
-        fi
-    fi
-    if [ -z "$norm" ]; then
+    if [ -z "$rmno" ]; then
         bbwarn "sstate_create_package remove $TFILE"
 		rm -f "$TFILE"
     fi
@@ -927,12 +900,6 @@ python sstate_report_unihash() {
 # Will be run from within SSTATE_INSTDIR.
 #
 sstate_unpack_package () {
-	ZSTD="zstd -T${ZSTD_THREADS}"
-	# Use pzstd if available
-	#if [ -x "$(command -v pzstd)" ]; then
-	#	ZSTD="pzstd -p ${ZSTD_THREADS}"
-	#fi
-
     bbwarn "sstate_unpack_package running in ${PWD}..."
 
     if echo ${SSTATE_PKG} | grep rootfs; then
@@ -942,7 +909,7 @@ sstate_unpack_package () {
         pkgname="bootstrap.tar.zstd"
         ln -Pf ${SSTATE_PKG} $pkgname
     else
-	    tar -I "$ZSTD" -xvpf ${SSTATE_PKG}
+	    tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -xvpf ${SSTATE_PKG}
     fi
 
 	# update .siginfo atime on local/NFS mirror if it is a symbolic link
