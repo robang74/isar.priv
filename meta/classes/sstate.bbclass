@@ -831,25 +831,27 @@ sstate_task_postfunc[dirs] = "${WORKDIR}"
 # set as SSTATE_BUILDDIR. Will be run from within SSTATE_BUILDDIR.
 #
 sstate_create_package () {
+    set -e
+    local TFILE remove ret
+
 	# Exit early if it already exists
 	if [ -e ${SSTATE_PKG} ]; then
-        bbwarn "sstate_create_package found ${SSTATE_PKG}, return."
+        bbwarn "sstate_create_package return\n\t found: ${SSTATE_PKG}"
 		touch ${SSTATE_PKG} 2>/dev/null ||:
-		return
-	fi
+		return 0
+    fi
 
 	mkdir --mode=0775 -p $(dirname ${SSTATE_PKG})
 
     if [ -f "../rootfs.tar.zstd" ]; then
-        rmno=1
         TFILE="../rootfs.tar.zstd"
-        bbwarn "sstate_create_package found "$(du -ms $PWD/$TFILE 2>/dev/null ||:)
+        bbwarn "sstate_create_package\n\t found: "$(du -ms $PWD/$TFILE 2>/dev/null ||:)
     elif [ -f "../bootstrap.tar.zstd" ]; then
-        rmno=1
         TFILE="../bootstrap.tar.zstd"
-        bbwarn "sstate_create_package found "$(du -ms $PWD/$TFILE 2>/dev/null ||:)
+        bbwarn "sstate_create_package\n\t found: "$(du -ms $PWD/$TFILE 2>/dev/null ||:)
     else
-        bbwarn "sstate_create_package create ${SSTATE_PKG} running in $PWD..."
+        remove=1
+        bbwarn "sstate_create_package\n\t create: ${SSTATE_PKG}\n\t pwd: $PWD..."
 	    TFILE=$(mktemp ${SSTATE_PKG}.XXXXXXXX)
 
         # Need to handle empty directories
@@ -868,10 +870,17 @@ sstate_create_package () {
 
 	chmod 0664 "$TFILE"
     ln -Pf "$TFILE" "${SSTATE_PKG}"
-    bbwarn "sstate_create_package saved "$(du -ms ${SSTATE_PKG})
+    bbwarn "sstate_create_package\n\t saved: "$(du -ms ${SSTATE_PKG})
 
-    if [ -z "$rmno" ]; then
-        bbwarn "sstate_create_package remove $TFILE"
+    if [ "${remove}" == "1" ]; then
+        for i in bootstrap rootfs; do
+            if echo "$TFILE" | grep -q "$i"; then
+                bbwarn "sstate_create_package\n\t move: $PWD/../$i.tar.zstd"
+                ln -Pf "$TFILE" ../$i.tar.zstd # atomic move
+                break
+            fi
+        done
+        bbwarn "sstate_create_package\n\t remove: $TFILE"
 		rm -f "$TFILE"
     fi
 }
@@ -900,7 +909,7 @@ python sstate_report_unihash() {
 # Will be run from within SSTATE_INSTDIR.
 #
 sstate_unpack_package () {
-    bbwarn "sstate_unpack_package running in ${PWD}..."
+    bbwarn "sstate_unpack_package running pwd: ${PWD}"
 
     if echo ${SSTATE_PKG} | grep rootfs; then
         pkgname="rootfs.tar.zstd"
@@ -924,7 +933,7 @@ sstate_unpack_package () {
         ln -Pf ${pkgname} ${WORKDIR}
     fi
 
-    bbwarn "sstate_unpack_package completed: "$(du -ms ${WORKDIR}/${pkgname} 2>/dev/null ||:)
+    bbwarn "sstate_unpack_package\n\t completed: "$(du -ms ${WORKDIR}/${pkgname} 2>/dev/null ||:)
 }
 
 BB_HASHCHECK_FUNCTION = "sstate_checkhashes"
