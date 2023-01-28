@@ -407,7 +407,7 @@ SSTATEPOSTINSTFUNCS += "bootstrap_sstate_finalize"
 
 bootstrap_sstate_prepare() {
     set -e
-    bbwarn "bootstrap_sstate_prepare running\n\t pwd:  $PWD\n\t rootfs: ${ROOTFSDIR}\n\t files: "$(sudo find ${ROOTFSDIR} | wc -l)
+    bbwarn "bootstrap_sstate_prepare\n\t pwd:  $PWD\n\t rootfs: ${ROOTFSDIR}\n\t files: "$(sudo find ${ROOTFSDIR} | wc -l)
     # this runs in SSTATE_BUILDDIR, which will be deleted automatically
     sudo tar ${ROOTFS_TAR_EXCLUDE_OPTS} -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" \
         -C "${ROOTFSDIR}" -cpSf ../bootstrap.tar.zstd .
@@ -417,7 +417,7 @@ bootstrap_sstate_prepare() {
 
 bootstrap_sstate_finalize() {
     set -e
-    bbwarn "bootstrap_sstate_finalize is running\n\t pwd: $PWD\n\t rootfs: ${ROOTFSDIR}\n\t bootstrap: ${DEPLOY_ISAR_BOOTSTRAP}"
+    bbwarn "bootstrap_sstate_finalize\n\t pwd: $PWD\n\t rootfs: ${ROOTFSDIR}\n\t bootstrap: ${DEPLOY_ISAR_BOOTSTRAP}"
     # this runs in SSTATE_INSTDIR
     # - after building the bootstrap, the tar won't be there, but we also don't need to unpack
     # - after restoring from cache, there will be a tar which we unpack and then delete
@@ -429,7 +429,7 @@ bootstrap_sstate_finalize() {
 
 python do_bootstrap_setscene() {
     rfsd = d.getVar("ROOTFSDIR", True) or bb.fatal("ROOTFSDIR is not defined")
-    bb.warn("do_bootstrap_setscene is running\n\t rootfs: %s" % rfsd)
+    bb.warn("do_bootstrap_setscene\n\t rootfs: %s" % rfsd)
     sstate_setscene(d)
 }
 

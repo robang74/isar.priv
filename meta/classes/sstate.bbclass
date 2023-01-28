@@ -909,17 +909,18 @@ python sstate_report_unihash() {
 # Will be run from within SSTATE_INSTDIR.
 #
 sstate_unpack_package () {
-    bbwarn "sstate_unpack_package running pwd: ${PWD}"
+    set -e
 
-    if echo ${SSTATE_PKG} | grep rootfs; then
-        pkgname="rootfs.tar.zstd"
-        ln -Pf ${SSTATE_PKG} $pkgname
-    elif echo ${SSTATE_PKG} | grep bootstrap; then
-        pkgname="bootstrap.tar.zstd"
+    local pkgname=$(echo ${SSTATE_PKG} | sed -n \
+        -e "s/.*\(bootstrap\).*/\\1.tar.zstd/p" \
+        -e "s/.*\(rootfs\).*/\\1.tar.zstd/p")
+    if [ -n "${pkgname}" ]; then
         ln -Pf ${SSTATE_PKG} $pkgname
     else
-	    tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -xvpf ${SSTATE_PKG}
+	    tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -xf ${SSTATE_PKG}
     fi
+
+    bbwarn "sstate_unpack_package\n\t pwd: ${PWD} package: "${pkgname:-$(ls -1 *.deb *.DEB 2>/dev/null ||:)}
 
 	# update .siginfo atime on local/NFS mirror if it is a symbolic link
 	[ ! -h ${SSTATE_PKG}.siginfo ] || [ ! -e ${SSTATE_PKG}.siginfo ] || touch -a ${SSTATE_PKG}.siginfo 2>/dev/null || true
@@ -928,9 +929,10 @@ sstate_unpack_package () {
 	[ ! -e ${SSTATE_PKG}.sig ] || touch --no-dereference ${SSTATE_PKG}.sig 2>/dev/null || true
 	[ ! -e ${SSTATE_PKG}.siginfo ] || touch --no-dereference ${SSTATE_PKG}.siginfo 2>/dev/null || true
 
-    if [ -e "${pkgname:-}" ]; then
+    if [ -e "$pkgname" ]; then
         mkdir -p ${WORKDIR}/rootfs
-        ln -Pf ${pkgname} ${WORKDIR}
+        ln -Pf ${pkgname} ${WORKDIR} # atomic move
+        rm -f ${pkgname}             #
     fi
 
     bbwarn "sstate_unpack_package\n\t completed: "$(du -ms ${WORKDIR}/${pkgname} 2>/dev/null ||:)
