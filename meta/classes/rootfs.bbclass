@@ -87,23 +87,23 @@ rootfs_prepare(){
     mkdir -p ${ROOTFSDIR}
     if [ -e $rfile ]; then
         bbwarn "rootfs_prepare sstate1 in ${ROOTFSDIR}"
-        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf $rfile
+        sudo tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${ROOTFSDIR} -xpSf $rfile
         rm -f $rfile
     elif [ -e ../$rfile ]; then
         bbwarn "rootfs_prepare sstate2 in ${ROOTFSDIR}"
-        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ../$rfile
+        sudo tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${ROOTFSDIR} -xpSf ../$rfile
         rm -f ../$rfile
     elif [ -e ${distro}/$rfile ]; then
         bbwarn "rootfs_prepare sstate3 in ${ROOTFSDIR}"
-        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ${distro}/$rfile
+        sudo tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${ROOTFSDIR} -xpSf ${distro}/$rfile
         rm -f ${distro}/$rfile
     elif [ -e ${WORKDIR}/$rfile ]; then
         bbwarn "rootfs_prepare sstate4 in ${WORKDIR}"
-        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ${WORKDIR}/$rfile
+        sudo tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${ROOTFSDIR} -xpSf ${WORKDIR}/$rfile
         rm -f ${WORKDIR}/$rfile
     elif [ -e ${ROOTFSDIR}/../$rfile ]; then
         bbwarn "rootfs_prepare sstate5 in ${ROOTFSDIR}/.."
-        sudo tar -I 'unzstd -T8' -C ${ROOTFSDIR} -xpSf ${ROOTFSDIR}/../$rfile
+        sudo tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${ROOTFSDIR} -xpSf ${ROOTFSDIR}/../$rfile
         rm -f ${ROOTFSDIR}/../$rfile
     else
         bbwarn "rootfs_prepare copy ${BOOTSTRAP_SRC} in ${ROOTFSDIR}"
@@ -374,11 +374,10 @@ rootfs_install_sstate_prepare() {
     sudo -s << EOSUDO
         set -ex
         mount --bind ${WORKDIR}/rootfs ${WORKDIR}/mnt/rootfs -o ro
-#       find $d $opts -exec zstd --no-progress -2 --adapt -T8 --exclude-compressed --sparse -fmo ${WORKDIR}/mnt/rootfs.zstd {} + 
-#       sudo tar --one-file-system ${ROOTFS_TAR_EXCLUDE_OPTS} \
-#           -C ${WORKDIR}/mnt -cpSf rootfs.tar rootfs
+#       find $d $opts -exec zstd --no-progress -2 --adapt -T8
+#           --exclude-compressed --sparse -fmo ${WORKDIR}/mnt/rootfs.zstd {} +
         sudo tar --one-file-system ${ROOTFS_TAR_EXCLUDE_OPTS} \
-            -I 'zstd --no-progress -2 --adapt -T8' \
+            -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" \
             -C ${WORKDIR}/mnt -cpSf rootfs.tar.zstd rootfs
         umount ${WORKDIR}/mnt/rootfs
         chown $(id -u):$(id -g) rootfs.tar.zstd
@@ -397,7 +396,7 @@ rootfs_install_sstate_finalize() {
     mv -f rootfs.tar.zstd .. 2>/dev/null ||:
     if [ ! -d ${WORKDIR}/rootfs/usr/bin ]; then
         test -f ../rootfs.tar.zstd || return 1
-        sudo tar --one-file-system -I 'unzstd -T8' -C ${WORKDIR} -xpSf ../rootfs.tar.zstd
+        sudo tar --one-file-system -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${WORKDIR} -xpSf ../rootfs.tar.zstd
         bbwarn "rootfs_install_sstate_finalize populated "$(du -ms ${WORKDIR}/rootfs)
     fi
     mkdir -p "${REPO_ISAR_DIR}"
