@@ -225,7 +225,8 @@ python do_rootfs_install() {
     progress_reporter = bb.progress.MultiStageProgressReporter(d, stage_weights)
 
     for cmd in cmds:
-        bb.debug(2, "%s is proceding with cmd: %s" % (inspect.stack()[0][3], cmd))
+#       bb.debug 2
+        bb.warn("%s is proceding with cmd: %s" % (inspect.stack()[0][3], cmd))
         progress_reporter.next_stage()
 
         if (d.getVarFlag(cmd, 'isar-apt-lock') or "") == "acquire-before":
@@ -364,13 +365,16 @@ rootfs_install_sstate_prepare() {
 #   d="rootfs"
 #       find $d $opts -exec zstd --no-progress -2 --adapt -T8
 #           --exclude-compressed --sparse -fmo ${WORKDIR}/mnt/rootfs.zstd {} +
-    bbwarn "rootfs_install_sstate_prepare\n\t pwd: $PWD\n\t rootfs: "$(sudo du -ms ${WORKDIR}/rootfs 2>/dev/null ||:) &
+
+    set -e
+    bbwarn "rootfs_install_sstate_prepare\n\t pwd: $PWD\n\t rootfs: "$(sudo du -ms ${WORKDIR}/rootfs 2>/dev/null ||:)
     # this runs in SSTATE_BUILDDIR, which will be deleted automatically
     # tar --one-file-system will cross bind-mounts to the same filesystem,
     # so we use some mount magic to prevent that
     mkdir -p ${WORKDIR}/mnt/rootfs
     sudo -s << EOSUDO
         set -e
+        rm -f ../rootfs.tar.zstd 2>/dev/null
         mount --bind ${WORKDIR}/rootfs ${WORKDIR}/mnt/rootfs -o ro
         sudo tar --one-file-system ${ROOTFS_TAR_EXCLUDE_OPTS} \
             -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" \
