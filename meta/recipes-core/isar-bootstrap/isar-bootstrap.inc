@@ -298,6 +298,7 @@ do_bootstrap() {
         if [ "${BOOTSTRAP_FOR_HOST}" = "0" ]; then
             arch_param="--arch=${DISTRO_ARCH}"
         fi
+        export XZ_DEFAULTS='-T ${XZ_THREADS}'
         ${DEBOOTSTRAP} $debootstrap_args \
                        $arch_param \
                        ${@get_distro_components_argument(d)} \
@@ -377,11 +378,12 @@ do_bootstrap() {
             chroot "${ROOTFSDIR}" /usr/bin/dpkg --add-architecture ${COMPAT_DISTRO_ARCH}
         fi
 
-        chroot "${ROOTFSDIR}" /usr/bin/apt-get update -y \
-                                -o APT::Update::Error-Mode=any
-        chroot "${ROOTFSDIR}" /usr/bin/apt-get install -y -f
-        chroot "${ROOTFSDIR}" /usr/bin/apt-get dist-upgrade -y \
-                                -o Debug::pkgProblemResolver=yes
+        chroot "${ROOTFSDIR}" sh -c "\
+            export XZ_DEFAULTS='-T ${XZ_THREADS}'
+            apt-get update -y -o APT::Update::Error-Mode=any
+            apt-get install -y -f
+            apt-get dist-upgrade -y -o Debug::pkgProblemResolver=yes
+        "
 
         umount -l "${ROOTFSDIR}/dev/shm"
         umount -l "${ROOTFSDIR}/dev/pts"
@@ -422,7 +424,7 @@ bootstrap_sstate_finalize() {
     # - after building the bootstrap, the tar won't be there, but we also don't need to unpack
     # - after restoring from cache, there will be a tar which we unpack and then delete
     if [ -f ../bootstrap.tar.zstd ]; then
-        sudo tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C "${ROOTFSDIR}" -xpSf ../bootstrap.tar.zstd
+            sudo tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C "${ROOTFSDIR}" -xpSf ../bootstrap.tar.zstd
         sudo ln -Tfsr "${ROOTFSDIR}" "${DEPLOY_ISAR_BOOTSTRAP}"
     fi
 }
