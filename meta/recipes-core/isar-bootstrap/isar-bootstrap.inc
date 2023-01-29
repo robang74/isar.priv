@@ -424,9 +424,11 @@ bootstrap_sstate_finalize() {
     # - after building the bootstrap, the tar won't be there, but we also don't need to unpack
     # - after restoring from cache, there will be a tar which we unpack and then delete
     if [ -f ../bootstrap.tar.zstd ]; then
+        test -d "${ROOTFSDIR}/usr/bin" ||\
             sudo tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C "${ROOTFSDIR}" -xpSf ../bootstrap.tar.zstd
         sudo ln -Tfsr "${ROOTFSDIR}" "${DEPLOY_ISAR_BOOTSTRAP}"
     fi
+    test -d "${ROOTFSDIR}/usr/bin"
 }
 
 python do_bootstrap_setscene() {
