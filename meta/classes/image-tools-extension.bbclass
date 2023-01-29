@@ -31,6 +31,10 @@ do_install_imager_deps() {
     E="${@ isar_export_proxies(d)}"
     deb_dl_dir_import ${SCHROOT_DIR} ${distro}
 
+    XZ_THREADS="${@d.getVar("XZ_THREADS", True).strip()}"
+#   XZ_DEFAULTS="${@d.getVar("XZ_DEFAULTS", True).strip()}"
+    bbwarn "do_install_imager_deps XZ_THREADS: "$XZ_THREADS
+
     schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
         apt-get -y update \
             -o Dir::Etc::SourceList="sources.list.d/isar-apt.list" \
