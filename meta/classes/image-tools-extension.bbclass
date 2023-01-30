@@ -76,6 +76,22 @@ EOF"
 
     schroot -e -c ${session_id}
 
-    remove_mounts
     schroot_delete_configs
+
+    E="${@ isar_export_proxies(d)}"
+    deb_dl_dir_import ${BUILDCHROOT_DIR} ${distro}
+    sudo -E chroot ${BUILDCHROOT_DIR} sh -c ' \
+        apt-get update \
+            -o Dir::Etc::SourceList="sources.list.d/isar-apt.list" \
+            -o Dir::Etc::SourceParts="-" \
+            -o APT::Get::List-Cleanup="0"
+        apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y \
+            --allow-unauthenticated --allow-downgrades --download-only install \
+            --reinstall ${IMAGER_INSTALL}'
+
+    deb_dl_dir_export ${BUILDCHROOT_DIR} ${distro}
+    sudo -E chroot ${BUILDCHROOT_DIR} sh -c ' \
+        apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y \
+            --allow-unauthenticated --allow-downgrades install \
+            --reinstall ${IMAGER_INSTALL}'
 }
