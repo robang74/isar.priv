@@ -23,7 +23,7 @@ APTSRCS_INIT = "${WORKDIR}/apt-sources-init"
 DISTRO_BOOTSTRAP_KEYFILES = ""
 THIRD_PARTY_APT_KEYFILES = ""
 DEPLOY_ISAR_BOOTSTRAP ?= ""
-DISTRO_BOOTSTRAP_BASE_PACKAGES = "locales,time"
+DISTRO_BOOTSTRAP_BASE_PACKAGES = "locales,time,pigz"
 DISTRO_BOOTSTRAP_BASE_PACKAGES:append:gnupg = ",gnupg"
 DISTRO_BOOTSTRAP_BASE_PACKAGES:append:https-support = ",ca-certificates"
 DISTRO_VARS_PREFIX ?= "${@'HOST_' if d.getVar('BOOTSTRAP_FOR_HOST') == '1' else ''}"
@@ -269,6 +269,7 @@ do_bootstrap[vardeps] += " \
     DISTRO_APT_PREMIRRORS \
     ISAR_ENABLE_COMPAT_ARCH \
     ${DISTRO_VARS_PREFIX}DISTRO_APT_SOURCES \
+    pigz_replaces_gzip \
     "
 do_bootstrap[dirs] = "${DEPLOY_DIR_BOOTSTRAP}"
 do_bootstrap[depends] = "base-apt:do_cache isar-apt:do_cache_config"
@@ -297,6 +298,8 @@ do_bootstrap() {
         bbwarn "*** ATTENTION *** BOOTSTRAP_FOR_HOST=0, DEBOOTSTRAP=${DEBOOTSTRAP},"\
             "HOST_ARCH=${HOST_ARCH}, ROOTFS_ARCH=${ROOTFS_ARCH}, DISTRO_ARCH=${DISTRO_ARCH}."
 
+    bbwarn "args: ${debootstrap_args}, comp: "${@get_distro_components_argument(d)}
+
     sudo -E -s <<'EOSUDO'
         set -e
         if [ "${BOOTSTRAP_FOR_HOST}" = "0" ]; then
@@ -310,7 +313,12 @@ do_bootstrap() {
                        "${ROOTFSDIR}" \
                        "${@get_distro_source(d)}" \
                        ${DISTRO_DEBOOTSTRAP_SCRIPT}
+EOSUDO
 
+    # RAF: replace gzip with pigz for parallelism
+    pigz_replaces_gzip "${ROOTFSDIR}"
+
+    sudo -E -s <<'EOSUDO'
         # Install apt config
         mkdir -p "${ROOTFSDIR}/etc/apt/preferences.d"
         install -v -m644 "${APTPREFS}" \
