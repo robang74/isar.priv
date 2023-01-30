@@ -84,7 +84,7 @@ rootfs_prepare(){
     set -e
     test -d ${ROOTFSDIR}/usr/bin && return 0
 #   local time=/build/tmp/work/debian-bullseye-amd64/isar-bootstrap-target/1.0-r0/rootfs/usr/bin/time
- 
+
     bbwarn "rootfs_prepare in pwd: $PWD\n\t"\
         "work: ${WORKDIR}\n\t rootfs: ${ROOTFSDIR}\n\t bootstrap: ${BOOTSTRAP_SRC}"
 
@@ -204,9 +204,14 @@ ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_install"
 rootfs_install_pkgs_install[weight] = "8000"
 rootfs_install_pkgs_install[network] = "${TASK_USE_SUDO}"
 rootfs_install_pkgs_install() {
-    sudo -E chroot "${ROOTFSDIR}" sh -c "export XZ_DEFAULTS='-T ${XZ_THREADS}';
-        /usr/bin/apt-get ${ROOTFS_APT_ARGS} -y ${ROOTFS_PACKAGES}"
+    sudo -E chroot "${ROOTFSDIR}" sh -c "\
+        set -e
+        apt-get ${ROOTFS_APT_ARGS} -y ${ROOTFS_PACKAGES}
+"
+    # RAF: replace gzip with pigz for parallelism
+    pigz_replaces_gzip "${ROOTFSDIR}"
 }
+ROOTFS_PACKAGES += "pigz"
 
 do_rootfs_install[root_cleandirs] = "${ROOTFSDIR}"
 do_rootfs_install[vardeps] += "${ROOTFS_CONFIGURE_COMMAND} ${ROOTFS_INSTALL_COMMAND}"
