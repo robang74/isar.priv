@@ -318,6 +318,48 @@ rootfs_install_pkgs_install:prepend() {
     fi
 }
 
+#
+# RAF: mandb -cq take a lot of time but it can run at the first boot, instead
+#
+rootfs_install_pkgs_install:prepend() {
+    bbwarn "rootfs_install_pkgs_install:prepend in ${ROOTFSDIR}"
+    sudo chroot "${ROOTFSDIR}" sh -c '\
+        set -e
+        while true; do
+            if [ -f /usr/bin/mandb ]; then
+                ln -Pf /usr/bin/mandb /usr/bin/.mandb && \
+                    ln -sf /usr/bin/true /usr/bin/mandb
+                break
+            fi
+            sleep 0.1 ||:
+        done
+' &
+}
+image_install_localepurge_install:append() {
+    bbwarn "image_install_localepurge_install:append in ${ROOTFSDIR}"
+    sudo chroot "${ROOTFSDIR}" sh -c "\
+        set -ex
+
+        test -e /usr/bin/.mandb || exit 1
+        ln -Pf /usr/bin/.mandb /usr/bin/mandb && \
+            rm /usr/bin/.mandb
+        test -e /usr/bin/.mandb && exit 1
+
+        crontab -l > crontab.root 2>/devll
+        echo '@reboot /usr/share/mandbcq.sh' >> crontab.root
+        crontab crontab.root
+        rm -f crontab.root
+
+        echo '/usr/bin/mandb -cq && rm -f /usr/share/mandbcq.sh' \
+            >/usr/share/mandbcq.sh
+        chmod a+x /usr/share/mandbcq.sh
+"
+    local ret=$?
+    bbwarn "image_install_localepurge_install:append ret:$ret"
+    return $ret
+}
+IMAGE_PREINSTALL += "cron"
+
 # here we call a command that should describe your whole build system,
 # this could be "git describe" or something similar.
 # set ISAR_RELEASE_CMD to customize, or override do_mark_rootfs to do something
