@@ -305,7 +305,7 @@ do_bootstrap() {
         if [ "${BOOTSTRAP_FOR_HOST}" = "0" ]; then
             arch_param="--arch=${DISTRO_ARCH}"
         fi
-        export XZ_DEFAULTS='-T ${XZ_THREADS}'
+        export XZ_OPT="-T ${XZ_THREADS}"
         ${DEBOOTSTRAP} $debootstrap_args \
                        $arch_param \
                        ${@get_distro_components_argument(d)} \
@@ -391,7 +391,7 @@ EOSUDO
         fi
 
         chroot "${ROOTFSDIR}" sh -c "\
-            export XZ_DEFAULTS='-T ${XZ_THREADS}'
+            export XZ_OPT='-T ${XZ_THREADS}'
             apt-get update -y -o APT::Update::Error-Mode=any
             apt-get install -y -f
             apt-get dist-upgrade -y -o Debug::pkgProblemResolver=yes

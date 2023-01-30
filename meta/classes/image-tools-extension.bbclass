@@ -40,7 +40,7 @@ do_install_imager_deps() {
             -o Dir::Etc::SourceList="sources.list.d/isar-apt.list" \
             -o Dir::Etc::SourceParts="-" \
             -o APT::Get::List-Cleanup="0"
-        export XZ_DEFAULTS="-T '${XZ_THREADS}'"
+        export XZ_OPT="-T '${XZ_THREADS}'"
         rm -rf /usr/share/man /usr/share/doc
         apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends \
             --allow-unauthenticated --allow-downgrades -y install \
