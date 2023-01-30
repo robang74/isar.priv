@@ -206,6 +206,7 @@ rootfs_install_pkgs_install[network] = "${TASK_USE_SUDO}"
 rootfs_install_pkgs_install() {
     sudo -E chroot "${ROOTFSDIR}" sh -c "\
         set -e
+        export XZ_OPT='-T ${XZ_THREADS}'
         apt-get ${ROOTFS_APT_ARGS} -y ${ROOTFS_PACKAGES}
 "
     # RAF: replace gzip with pigz for parallelism
