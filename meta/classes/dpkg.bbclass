@@ -116,7 +116,7 @@ dpkg_runbuild() {
         --chroot-setup-commands="echo \"APT::Get::allow-downgrades 1;\" > /etc/apt/apt.conf.d/50isar-apt" \
         --chroot-setup-commands="rm -f /var/log/dpkg.log" \
         --chroot-setup-commands="mount -o bind ${ext_deb_dir} ${deb_dir}" \
-        --chroot-setup-commands="export XZ_DEFAULTS='-T 8'" \
+        --chroot-setup-commands="export XZ_OPT='-T 8'" \
         ${DPKG_SBUILD_EXTRA_ARGS} \
         --finished-build-commands="rm -f ${deb_dir}/sbuild-build-depends-main-dummy_*.deb" \
         --finished-build-commands="umount ${deb_dir}" \
