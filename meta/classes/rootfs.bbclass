@@ -82,10 +82,19 @@ BOOTSTRAP_SRC:${ROOTFS_ARCH} = "${DEPLOY_DIR_BOOTSTRAP}/${ROOTFS_DISTRO}-${ROOTF
 rootfs_prepare[weight] = "25"
 rootfs_prepare(){
     set -e
-    local distro rfile
     test -d ${ROOTFSDIR}/usr/bin && return 0
 #   local time=/build/tmp/work/debian-bullseye-amd64/isar-bootstrap-target/1.0-r0/rootfs/usr/bin/time
+ 
+    bbwarn "rootfs_prepare in pwd: $PWD\n\t"\
+        "work: ${WORKDIR}\n\t rootfs: ${ROOTFSDIR}\n\t bootstrap: ${BOOTSTRAP_SRC}"
 
+    mkdir -p ${ROOTFSDIR}
+    $time sudo tar -cpSOC "${BOOTSTRAP_SRC}/" . | sudo tar -xpSC "${ROOTFSDIR}/"
+    return $?
+
+#####################################################################################################
+
+    local distro rfile
     if [ -e rootfs.tar.zstd ]; then
         rfile="$PWD/rootfs.tar.zstd"
     else
@@ -415,7 +424,6 @@ rootfs_install_sstate_finalize() {
     fi
     mkdir -p "${REPO_ISAR_DIR}"
     sudo chown -R $(id -u):$(id -g) "${REPO_ISAR_DIR}"
-#   rm -f ../rootfs.tar.zstd 2>/dev/null
     return 0
 }
 
