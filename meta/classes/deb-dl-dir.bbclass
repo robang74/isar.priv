@@ -70,7 +70,8 @@ debsrc_download() {
         [ -n "$dscfile" ] && continue
 
         sudo -E chroot --userspec=$( id -u ):$( id -g ) ${rootfs} \
-            sh -c ' mkdir -p "/deb-src/${1}/${2}" && cd "/deb-src/${1}/${2}" && apt-get -y --download-only --only-source source "$2"="$3" ' download-src "${rootfs_distro}" "${src}" "${version}"
+            sh -c ' mkdir -p "/deb-src/${1}/${2}" && cd "/deb-src/${1}/${2}" && apt-get -y --download-only \
+                    --only-source source "$2"="$3" ' download-src "${rootfs_distro}" "${src}" "${version}"
     done
     ) 9>"${DEBSRCDIR}/${rootfs_distro}.lock"
 
@@ -118,4 +119,22 @@ deb_dl_dir_export() {
             find "${bdn}" -maxdepth 1 -type f -not -name lock -not -name \
                 _isar-apt\* -exec ln -Pf -t "${bpc}" {} + 2>/dev/null
 EOSUDO'
+}
+
+pigz_replaces_gzip() {
+    set -e
+    test -d "$1"
+    cd $1
+    if [ -e usr/bin/pigz ]; then
+        bbwarn "pigz_replaces_gzip pigz found"
+        for i in '' 'un'; do
+            if [ -f usr/bin/${i}gzip ]; then
+                sudo ln -Pf /usr/bin/${i}gzip usr/bin/${i}gzip.orig 2>/dev/null ||:
+                sudo ln -sf ${i}pigz usr/bin/${i}gzip
+            fi
+        done
+    else
+        bbwarn "pigz_replaces_gzip pigz is missing"
+        return 1
+    fi
 }
