@@ -18,6 +18,8 @@ imager_run() {
     schroot_create_configs
     insert_mounts
 
+    local_install="${@(d.getVar("INSTALL_%s" % d.getVar("BB_CURRENTTASK"), True) or '').strip()}"
+
     session_id=$(schroot -q -b -c ${SBUILD_CHROOT})
     echo "Started session: ${session_id}"
 
@@ -31,8 +33,8 @@ imager_run() {
     trap 'exit 1' INT HUP QUIT TERM ALRM USR1
     trap 'imager_cleanup' EXIT
 
-    if [ -n "${@d.getVar("IMAGER_INSTALL", True).strip()}" ]; then
-        echo "Installing deps: ${IMAGER_INSTALL}"
+    if [ -n "${local_install}" ]; then
+        echo "Installing imager deps: ${local_install}"
 
         distro="${BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
         if [ ${ISAR_CROSS_COMPILE} -eq 1 ]; then
@@ -61,13 +63,13 @@ EOF"
                 -o APT::Get::List-Cleanup='0'
             apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y \
                 --allow-unauthenticated --allow-downgrades --download-only install \
-                ${IMAGER_INSTALL}"
+                ${local_install}"
 
         deb_dl_dir_export ${SCHROOT_DIR} ${distro}
         schroot -r -c ${session_id} -d / -u root -- sh -c " \
             apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y \
                 --allow-unauthenticated --allow-downgrades install \
-                ${IMAGER_INSTALL}"
+                ${local_install}"
     fi
 
     schroot -r -c ${session_id} "$@"
