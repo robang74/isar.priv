@@ -423,8 +423,7 @@ bootstrap_sstate_prepare() {
     set -e
     bbwarn "bootstrap_sstate_prepare\n\t pwd:  $PWD\n\t rootfs: ${ROOTFSDIR}\n\t files: "$(sudo find ${ROOTFSDIR} | wc -l)
     # this runs in SSTATE_BUILDDIR, which will be deleted automatically
-    sudo tar ${ROOTFS_TAR_EXCLUDE_OPTS} -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" \
-        -C "${ROOTFSDIR}" -cpSf ../bootstrap.tar.zstd .
+    sudo tar ${ROOTFS_TAR_OPTS} -C "${ROOTFSDIR}" -f ../bootstrap.tar.zstd .
     sudo chown $(id -u):$(id -g) ../bootstrap.tar.zstd
     bbwarn "bootstrap_sstate_prepare\n\t completed: "$(du -ms $PWD/../bootstrap.tar.zstd)
 }
@@ -437,7 +436,7 @@ bootstrap_sstate_finalize() {
     # - after restoring from cache, there will be a tar which we unpack and then delete
     if [ -f ../bootstrap.tar.zstd ]; then
         test -d "${ROOTFSDIR}/usr/bin" ||\
-            sudo tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C "${ROOTFSDIR}" -xpSf ../bootstrap.tar.zstd
+            sudo tar ${ROOTFS_UNTAR_OPTS} -C "${ROOTFSDIR}" -f ../bootstrap.tar.zstd
         sudo ln -Tfsr "${ROOTFSDIR}" "${DEPLOY_ISAR_BOOTSTRAP}"
     fi
     test -d "${ROOTFSDIR}/usr/bin"
