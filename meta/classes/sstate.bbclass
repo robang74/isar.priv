@@ -840,7 +840,7 @@ sstate_create_package () {
             $(du -ms ${SSTATE_PKG} 2>/dev/null ||:)
 		touch ${SSTATE_PKG} 2>/dev/null ||:
 		return 0
-    fi
+	fi
 
     if echo $PWD | grep -q "imager_deps"; then
         test -f "upper.tar.zstd" || return 0
@@ -869,7 +869,7 @@ sstate_create_package () {
         # Need to handle empty directories
         if [ "$(ls -A)" ]; then
             set +e
-            tar -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" -cpSf $TFILE *
+            tar -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" --numeric-owner -cpSf $TFILE *
             ret=$?
             if [ $ret -ne 0 ] && [ $ret -ne 1 ]; then
                 exit 1
@@ -930,7 +930,7 @@ sstate_unpack_package () {
     if [ -n "${pkgname}" ]; then
         ln -Pf ${SSTATE_PKG} $pkgname
     else
-	    tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -xf ${SSTATE_PKG}
+	    tar -I "unzstd ${ZSTD_OPTS}" -xf ${SSTATE_PKG}
     fi
 
     bbwarn "sstate_unpack_package\n\t pwd: ${PWD} package: "${pkgname:-$(ls -1 *.deb *.DEB 2>/dev/null ||:)}
