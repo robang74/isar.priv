@@ -6,6 +6,7 @@
 # This file extends the image.bbclass to supply tools for futher imager functions
 
 inherit sbuild
+inherit sstate
 
 IMAGER_INSTALL ??= ""
 IMAGER_BUILD_DEPS ??= ""
@@ -52,7 +53,7 @@ fi
         cd ${SCHROOT_OVERLAY_DIR}
         if [ -e upper.tar ]; then
             trap "rm -f upper.tar" EXIT
-            tar --strip-components=1 -xf upper.tar -C /
+            tar --strip-components=1 -xpSf upper.tar -C /
         else
             apt-get -y update \
                 -o Dir::Etc::SourceList="sources.list.d/isar-apt.list" \
@@ -73,9 +74,10 @@ if true; then
         sudo -E chroot ${SCHROOT_DIR} /usr/bin/apt-get -y clean
 
         overlaydir="${SCHROOT_OVERLAY_DIR}/${IMAGER_SCHROOT_SESSION_ID}"
-        sudo tar --one-file-system ${ROOTFS_TAR_EXCLUDE_OPTS} --exclude=usr/share/doc \
-                --exclude=usr/share/man -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${overlaydir} \
-                --exclude=var/lib/dpkg --exclude=repo -cpSf ${SCHROOT_OVERLAY_DIR}/upper.tar.zstd upper
+        sudo tar --one-file-system ${ROOTFS_TAR_EXCLUDE_OPTS} \
+                --exclude="usr/share/doc/" --exclude="usr/share/man" \
+                -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${overlaydir} \
+                -cpSf ${SCHROOT_OVERLAY_DIR}/upper.tar.zstd upper
         bbwarn "do_install_imager_deps upper2 dir: "$(sudo du -ms ${overlaydir}/upper)
         bbwarn "do_install_imager_deps upper2 tar: "$(du -ms ${SCHROOT_OVERLAY_DIR}/upper.tar.zstd)
     fi
