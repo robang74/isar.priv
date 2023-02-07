@@ -83,37 +83,13 @@ rootfs_prepare[weight] = "25"
 rootfs_prepare(){
     set -e
     test -d "${ROOTFSDIR}/usr/bin" && return 0
-#   local time=/build/tmp/work/debian-bullseye-amd64/isar-bootstrap-target/1.0-r0/rootfs/usr/bin/time
 
     bbwarn "rootfs_prepare in pwd: $PWD\n\t"\
         "work: ${WORKDIR}\n\t rootfs: ${ROOTFSDIR}\n\t bootstrap: ${BOOTSTRAP_SRC}"
 
     mkdir -p "${ROOTFSDIR}"
-    sudo tar -cpSOC "${BOOTSTRAP_SRC}/" . | sudo tar -xpSC "${ROOTFSDIR}/"
-    return $?
-
-#####################################################################################################
-
-    local distro rfile
-    if [ -e rootfs.tar.zstd ]; then
-        rfile="$PWD/rootfs.tar.zstd"
-    else
-        distro=$(readlink -f ${BOOTSTRAP_SRC})
-        rfile="${distro%/*}/bootstrap.tar.zstd"
-    fi
-
-    bbwarn "rootfs_prepare in pwd: $PWD\n\t rfile: $rfile\n\t distro: ${distro}\n\t"\
-        "work: ${WORKDIR}\n\t rootfs: ${ROOTFSDIR}\n\t bootstrap: ${BOOTSTRAP_SRC}"
-    mkdir -p ${ROOTFSDIR}
-    if [ -e "$rfile" ]; then
-        bbwarn "rootfs_prepare\n\t sstate: $rfile\n\t rootfs: ${ROOTFSDIR}"
-        $time sudo tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${ROOTFSDIR} \
-            -xpSf "$rfile"
-        return $?
-    fi
-
-    bbwarn "rootfs_prepare\n\t copy: ${BOOTSTRAP_SRC}\n\t rootfs: ${ROOTFSDIR}"
-    $time sudo cp -Trpfx --reflink=auto '${BOOTSTRAP_SRC}/' '${ROOTFSDIR}'
+    sudo tar --numeric-owner -cpSOC "${BOOTSTRAP_SRC}/" . |\
+        sudo tar --same-owner -xpSC "${ROOTFSDIR}/"
 }
 
 ROOTFS_CONFIGURE_COMMAND += "rootfs_configure_isar_apt"
@@ -253,6 +229,7 @@ python do_rootfs_install() {
         if (d.getVarFlag(cmd, 'isar-apt-lock') or "") == "release-after":
             if 'lock' in locals():
                 bb.utils.unlockfile(lock)
+
     progress_reporter.finish()
 }
 addtask rootfs_install before do_rootfs_postprocess after do_unpack
@@ -402,9 +379,8 @@ rootfs_install_sstate_prepare() {
         set -e
         rm -f ../rootfs.tar.zstd 2>/dev/null
         mount --bind ${WORKDIR}/rootfs ${WORKDIR}/mnt/rootfs -o ro
-        sudo tar --one-file-system ${ROOTFS_TAR_EXCLUDE_OPTS} \
-            -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" \
-            -C ${WORKDIR}/mnt -cpSf rootfs.tar.zstd rootfs
+        sudo tar --one-file-system ${ROOTFS_TAR_OPTS} \
+            -C ${WORKDIR}/mnt -f rootfs.tar.zstd rootfs
         umount ${WORKDIR}/mnt/rootfs
         chown $(id -u):$(id -g) rootfs.tar.zstd
 EOSUDO
@@ -425,7 +401,7 @@ rootfs_install_sstate_finalize() {
     fi
     if [ ! -d ${WORKDIR}/rootfs/usr/bin ]; then
         test -f ../rootfs.tar.zstd || return 1
-        sudo tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${WORKDIR} -xpSf ../rootfs.tar.zstd
+        sudo tar ${ROOTFS_UNTAR_OPTS} -C ${WORKDIR} -f ../rootfs.tar.zstd
         bbwarn "rootfs_install_sstate_finalize\n\t rootfs: "$(du -ms ${WORKDIR}/rootfs)
     fi
     sudo mkdir -p "${REPO_ISAR_DIR}"
