@@ -28,30 +28,56 @@ do_install_imager_deps() {
 
     schroot -r -c ${session_id} "$@"
 
-    E="${@ isar_export_proxies(d)}"
-    deb_dl_dir_import ${SCHROOT_DIR} ${distro}
-
-    XZ_THREADS="${@d.getVar("XZ_THREADS", True).strip()}"
-#   XZ_DEFAULTS="${@d.getVar("XZ_DEFAULTS", True).strip()}"
-    bbwarn "do_install_imager_deps XZ_THREADS: "$XZ_THREADS
-
+    set -e
+if true; then
+    if [ -e ${SCHROOT_OVERLAY_DIR}/upper.tar.zstd ]; then
+        cd ${SCHROOT_OVERLAY_DIR}
+        sudo unzstd ${ROOTFS_TAR_ZSTD_OPTS} upper.tar.zstd -qfo upper.tar
+        cd - >/dev/null
+        bbwarn "do_install_imager_deps upper1 zip: "$(du -ms ${SCHROOT_OVERLAY_DIR}/upper.tar.zstd)
+        bbwarn "do_install_imager_deps upper1 tar: "$(du -ms ${SCHROOT_OVERLAY_DIR}/upper.tar)
+    else
+        deb_dl_dir_import ${SCHROOT_DIR} ${distro}
+        sudo rm -f ${SCHROOT_OVERLAY_DIR}/upper.tar
+        export XZ_THREADS="${@d.getVar("XZ_THREADS", True).strip()}"
+        bbwarn "do_install_imager_deps xz: ${XZ_THREADS}, overlay: ${SCHROOT_OVERLAY_DIR}\n\t" \
+            "schroot: ${SCHROOT_DIR}"
+        E="${@ isar_export_proxies(d)}"
+    fi
+fi
     schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
-        apt-get -y update \
-            -o Dir::Etc::SourceList="sources.list.d/isar-apt.list" \
-            -o Dir::Etc::SourceParts="-" \
-            -o APT::Get::List-Cleanup="0"
-        export XZ_OPT="-T '${XZ_THREADS}'"
-        rm -rf /usr/share/man /usr/share/doc
-        apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends \
-            --allow-unauthenticated --allow-downgrades -y install \
-            --reinstall ${IMAGER_INSTALL}'
+        set -e
+        cd ${SCHROOT_OVERLAY_DIR}
+        if [ -e upper.tar ]; then
+            trap "rm -f upper.tar" EXIT
+            tar --strip-components=1 -xf upper.tar -C /
+        else
+            apt-get -y update \
+                -o Dir::Etc::SourceList="sources.list.d/isar-apt.list" \
+                -o Dir::Etc::SourceParts="-" \
+                -o APT::Get::List-Cleanup="0"
+            export XZ_OPT="-T ${XZ_THREADS}"
+            rm -rf /usr/share/man /usr/share/doc
+            apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends \
+                --allow-unauthenticated --allow-downgrades -y install \
+                --reinstall ${IMAGER_INSTALL}
+        fi
+'
 
-    deb_dl_dir_export ${SCHROOT_DIR} ${distro}
+if true; then
+    if [ ! -e ${SCHROOT_OVERLAY_DIR}/upper.tar.zstd ]; then
+        deb_dl_dir_export ${SCHROOT_DIR} ${distro}
+        schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c 'apt-get -y clean'
+        sudo -E chroot ${SCHROOT_DIR} /usr/bin/apt-get -y clean
 
-    schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
-        apt-get -y clean'
-
-    sudo -E chroot ${SCHROOT_DIR} /usr/bin/apt-get -y clean
+        overlaydir="${SCHROOT_OVERLAY_DIR}/${IMAGER_SCHROOT_SESSION_ID}"
+        sudo tar --one-file-system ${ROOTFS_TAR_EXCLUDE_OPTS} --exclude=usr/share/doc \
+                --exclude=usr/share/man -I "zstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${overlaydir} \
+                --exclude=var/lib/dpkg --exclude=repo -cpSf ${SCHROOT_OVERLAY_DIR}/upper.tar.zstd upper
+        bbwarn "do_install_imager_deps upper2 dir: "$(sudo du -ms ${overlaydir}/upper)
+        bbwarn "do_install_imager_deps upper2 tar: "$(du -ms ${SCHROOT_OVERLAY_DIR}/upper.tar.zstd)
+    fi
+fi
 }
 addtask install_imager_deps before do_image_tools after do_start_imager_session
 
