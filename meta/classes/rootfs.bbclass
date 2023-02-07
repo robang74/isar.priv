@@ -82,14 +82,14 @@ BOOTSTRAP_SRC:${ROOTFS_ARCH} = "${DEPLOY_DIR_BOOTSTRAP}/${ROOTFS_DISTRO}-${ROOTF
 rootfs_prepare[weight] = "25"
 rootfs_prepare(){
     set -e
-    test -d ${ROOTFSDIR}/usr/bin && return 0
+    test -d "${ROOTFSDIR}/usr/bin" && return 0
 #   local time=/build/tmp/work/debian-bullseye-amd64/isar-bootstrap-target/1.0-r0/rootfs/usr/bin/time
 
     bbwarn "rootfs_prepare in pwd: $PWD\n\t"\
         "work: ${WORKDIR}\n\t rootfs: ${ROOTFSDIR}\n\t bootstrap: ${BOOTSTRAP_SRC}"
 
-    mkdir -p ${ROOTFSDIR}
-    $time sudo tar -cpSOC "${BOOTSTRAP_SRC}/" . | sudo tar -xpSC "${ROOTFSDIR}/"
+    mkdir -p "${ROOTFSDIR}"
+    sudo tar -cpSOC "${BOOTSTRAP_SRC}/" . | sudo tar -xpSC "${ROOTFSDIR}/"
     return $?
 
 #####################################################################################################
@@ -415,7 +415,6 @@ do_rootfs_install_sstate_prepare[lockfiles] = "${REPO_ISAR_DIR}/isar.lock"
 rootfs_install_sstate_finalize() {
     set -e
 
-#   bbdebug 2
     bbwarn "rootfs_install_sstate_finalize\n\t pwd: $PWD\n\t workdir: ${WORKDIR}\n\t cache: "$(du -ms ../rootfs.* rootfs.* 2>/dev/null ||:) &
     # this runs in SSTATE_INSTDIR
     # - after building the rootfs, the tar won't be there, but we also don't need to unpack
@@ -428,7 +427,7 @@ rootfs_install_sstate_finalize() {
         sudo tar -I "unzstd ${ROOTFS_TAR_ZSTD_OPTS}" -C ${WORKDIR} -xpSf ../rootfs.tar.zstd
         bbwarn "rootfs_install_sstate_finalize\n\t rootfs: "$(du -ms ${WORKDIR}/rootfs)
     fi
-    mkdir -p "${REPO_ISAR_DIR}"
+    sudo mkdir -p "${REPO_ISAR_DIR}"
     sudo chown -R $(id -u):$(id -g) "${REPO_ISAR_DIR}"
     return 0
 }
