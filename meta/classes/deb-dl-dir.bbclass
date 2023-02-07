@@ -87,7 +87,7 @@ deb_dl_dir_import() {
     bdn="${1}/var/lib/apt/lists/"
     bpc="${DEBDIR}/lists/${2}"
     export adn bdn apc bpc nol
-    flock -s "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
+    flock -Fs "${DEBDIR}".lock sudo -Es << 'EOSUDO'
         mkdir -p "${adn}" && \
             find "${apc}" -maxdepth 1 -type f -iname \*.deb \
                 -exec ln -Pf -t "${adn}" {} + 2>/dev/null
@@ -97,7 +97,7 @@ deb_dl_dir_import() {
         mkdir -p "${bdn}" && \
             find "${bpc}" -maxdepth 1 -type f -not -name lock -not -name \
                 _isar-apt\* -exec ln -Pf -t "${bdn}" {} + 2>/dev/null
-EOSUDO'
+EOSUDO
 }
 
 deb_dl_dir_export() {
@@ -108,7 +108,7 @@ deb_dl_dir_export() {
     bdn="${1}/var/lib/apt/lists/"
     bpc="${DEBDIR}/lists/${2}"
     export adn bdn apc bpc nol
-    flock "${DEBDIR}".lock -c 'sudo -Es << EOSUDO
+    flock -F "${DEBDIR}".lock sudo -Es << 'EOSUDO'
         mkdir -p "${apc}" && \
             find "${adn}" -maxdepth 1 -type f -iname \*.deb \
                 -exec ln -P -t "${apc}" {} + 2>/dev/null
@@ -118,7 +118,7 @@ deb_dl_dir_export() {
         mkdir -p "${bpc}" && \
             find "${bdn}" -maxdepth 1 -type f -not -name lock -not -name \
                 _isar-apt\* -exec ln -Pf -t "${bpc}" {} + 2>/dev/null
-EOSUDO'
+EOSUDO
 }
 
 pigz_replaces_gzip() {
