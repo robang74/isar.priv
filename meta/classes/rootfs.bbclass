@@ -394,8 +394,8 @@ rootfs_install_sstate_finalize() {
         sudo tar ${ROOTFS_UNTAR_OPTS} -C ${WORKDIR} -f ../rootfs.tar.zstd
         bbwarn "rootfs_install_sstate_finalize\n\t rootfs: "$(du -ms ${WORKDIR}/rootfs)
     fi
-    sudo mkdir -p "${REPO_ISAR_DIR}"
-    sudo chown -R $(id -u):$(id -g) "${REPO_ISAR_DIR}"
+    sudo mkdir -p "${REPO_ISAR_DIR}" "${DEPLOY_DIR_IMAGE}" "${DEPLOY_DIR}"
+    sudo chown -R $(id -u):$(id -g) "${REPO_ISAR_DIR}" "${DEPLOY_DIR_IMAGE}" "${DEPLOY_DIR}"
     return 0
 }
 
