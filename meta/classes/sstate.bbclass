@@ -836,19 +836,31 @@ sstate_create_package () {
 
 	# Exit early if it already exists
 	if [ -e ${SSTATE_PKG} ]; then
-        bbwarn "sstate_create_package return\n\t found: ${SSTATE_PKG}"
+        bbwarn "sstate_create_package return\n\t found:"\
+            $(du -ms ${SSTATE_PKG} 2>/dev/null ||:)
 		touch ${SSTATE_PKG} 2>/dev/null ||:
 		return 0
     fi
 
+    if echo $PWD | grep -q "imager_deps"; then
+        test -f "upper.tar.zstd" || return 0
+        bbwarn "sstate_create_package"
+    fi
+
 	mkdir --mode=0775 -p $(dirname ${SSTATE_PKG})
 
-    if [ -f "../rootfs.tar.zstd" ]; then
+    if [ -f "upper.tar.zstd" ]; then
+        TFILE="upper.tar.zstd"
+        bbwarn "sstate_create_package\n\t found:"\
+            $(du -ms $PWD/$TFILE 2>/dev/null ||:)
+    elif [ -f "../rootfs.tar.zstd" ]; then
         TFILE="../rootfs.tar.zstd"
-        bbwarn "sstate_create_package\n\t found: "$(du -ms $PWD/$TFILE 2>/dev/null ||:)
+        bbwarn "sstate_create_package\n\t found:"\
+            $(du -ms $PWD/$TFILE 2>/dev/null ||:)
     elif [ -f "../bootstrap.tar.zstd" ]; then
         TFILE="../bootstrap.tar.zstd"
-        bbwarn "sstate_create_package\n\t found: "$(du -ms $PWD/$TFILE 2>/dev/null ||:)
+        bbwarn "sstate_create_package\n\t found:"\
+            $(du -ms $PWD/$TFILE 2>/dev/null ||:)
     else
         remove=1
         bbwarn "sstate_create_package\n\t create: ${SSTATE_PKG}\n\t pwd: $PWD..."
@@ -913,7 +925,8 @@ sstate_unpack_package () {
 
     local pkgname=$(echo ${SSTATE_PKG} | sed -n \
         -e "s/.*\(bootstrap\).*/\\1.tar.zstd/p" \
-        -e "s/.*\(rootfs\).*/\\1.tar.zstd/p")
+        -e "s/.*\(rootfs\).*/\\1.tar.zstd/p"    \
+        -e "s/.*\(upper\).*/\\1.tar.zstd/p")
     if [ -n "${pkgname}" ]; then
         ln -Pf ${SSTATE_PKG} $pkgname
     else
