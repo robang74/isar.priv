@@ -65,8 +65,8 @@ ISAR_RELEASE_CMD_DEFAULT = "git -C ${LAYERDIR_core} describe --tags --dirty --ma
 ISAR_RELEASE_CMD ?= "${ISAR_RELEASE_CMD_DEFAULT}"
 
 image_do_mounts() {
+    mkdir -p "${BUILDROOT_DEPLOY}" "${BUILDROOT_ROOTFS}" "${BUILDROOT_WORK}"
     sudo flock ${MOUNT_LOCKFILE} -c ' \
-        mkdir -p "${BUILDROOT_DEPLOY}" "${BUILDROOT_ROOTFS}" "${BUILDROOT_WORK}"
         mount --bind "${DEPLOY_DIR_IMAGE}" "${BUILDROOT_DEPLOY}"
         mount --bind "${IMAGE_ROOTFS}" "${BUILDROOT_ROOTFS}"
         mount --bind "${WORKDIR}" "${BUILDROOT_WORK}"
@@ -307,7 +307,6 @@ python() {
     d.appendVar('IMAGER_BUILD_DEPS', ' ' + ' '.join(sorted(imager_build_deps)))
 }
 
-
 # make generation of initramfs reproducible
 # note: this function is shared across multiple rootfs, but we only want to make the
 #       image rootfs reproducible. Otherwise changes of SOURCE_DATE_EPOCH would
@@ -416,6 +415,8 @@ addtask deploy before do_build after do_image
 do_rootfs_finalize() {
     sudo -s <<'EOSUDO'
         set -e
+
+        chown builder:builder $(dirname ${ROOTFSDIR})
 
         if [ -e "${ROOTFSDIR}/chroot-setup.sh" ]; then
             "${ROOTFSDIR}/chroot-setup.sh" "cleanup" "${ROOTFSDIR}"
