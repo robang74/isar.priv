@@ -324,7 +324,7 @@ rootfs_install_pkgs_install:prepend() {
 IMAGE_PREINSTALL += "cron"
 
 rootfs_install_pkgs_install:prepend() {
-    bbwarn "rootfs_install_pkgs_install:prepend in ${ROOTFSDIR}"
+    bbwarn "rootfs_install_pkgs_install:prepend\n\t rootfs: ${ROOTFSDIR}"
     sudo chroot "${ROOTFSDIR}" sh -c '\
         set -e
         while true; do
