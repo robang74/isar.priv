@@ -382,6 +382,7 @@ rootfs_install_sstate_prepare() {
 #           --exclude-compressed --sparse -fmo ${WORKDIR}/mnt/rootfs.zstd {} +
 
     set -e
+    echo $PWD | grep -qe "-rootfs_install$" || return 0
     bbwarn "rootfs_install_sstate_prepare\n\t pwd: $PWD\n\t rootfs: "$(sudo du -ms ${WORKDIR}/rootfs 2>/dev/null ||:)
     # this runs in SSTATE_BUILDDIR, which will be deleted automatically
     # tar --one-file-system will cross bind-mounts to the same filesystem,
@@ -404,7 +405,7 @@ do_rootfs_install_sstate_prepare[lockfiles] = "${REPO_ISAR_DIR}/isar.lock"
 
 rootfs_install_sstate_finalize() {
     set -e
-
+    echo $PWD | grep -qe "-rootfs_install$" || return 0
     bbwarn "rootfs_install_sstate_finalize\n\t pwd: $PWD\n\t workdir: ${WORKDIR}\n\t cache: "$(du -ms ../rootfs.* rootfs.* 2>/dev/null ||:) &
     # this runs in SSTATE_INSTDIR
     # - after building the rootfs, the tar won't be there, but we also don't need to unpack
