@@ -156,12 +156,17 @@ generate_wic_image() {
     if [ ! -z "${SOURCE_DATE_EPOCH}" ]; then
         export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH}"
     fi
-    mkdir -p ${IMAGE_ROOTFS}/../pseudo
-    touch ${IMAGE_ROOTFS}/../pseudo/files.db
+
+    sudo find /var/cache/apt/archives -iname \*.deb -type f -exec \
+        bbfatal "/var/cache/apt/archives contains packages but it"\
+            "supposed not, abort" 2>/dev/null ||:
 
     imager_run -p -d ${PP_WORK} -u root <<'EOIMAGER'
         trap 'rm -rf ${wicdir} ${IMAGE_ROOTFS}/../pseudo ${PP_DEPLOY}/${IMAGE_FULLNAME}.wic*' EXIT
         set -e
+
+        mkdir -p ${IMAGE_ROOTFS}/../pseudo
+        touch ${IMAGE_ROOTFS}/../pseudo/files.db
 
         # The python path is hard-coded as /usr/bin/python3-native/python3 in wic. Handle that.
         mkdir -p /usr/bin/python3-native/
@@ -193,9 +198,9 @@ generate_wic_image() {
                 done
         fi
         rm -rf "${wicdir}"
+        rm -rf ${IMAGE_ROOTFS}/../pseudo
         trap - EXIT
 EOIMAGER
 
     sudo chown -R $(stat -c "%U" ${LAYERDIR_core}) ${LAYERDIR_core} ${LAYERDIR_isar} ${SCRIPTSDIR} || true
-    rm -rf ${IMAGE_ROOTFS}/../pseudo
 }
