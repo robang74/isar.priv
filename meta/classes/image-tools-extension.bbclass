@@ -16,46 +16,13 @@ SCHROOT_MOUNTS += "${REPO_ISAR_DIR}/${DISTRO}:/isar-apt"
 
 IMAGER_SCHROOT_SESSION_ID = "isar-imager-${SCHROOT_USER}-${PN}-${MACHINE}-${ISAR_BUILD_UUID}"
 
-SSTATETASKS += "do_install_imager_deps"
-SSTATECREATEFUNCS += "install_imager_deps_sstate_prepare"
-SSTATEPOSTINSTFUNCS += "install_imager_deps_sstate_finalize"
-
-install_imager_deps_sstate_prepare() {
-    echo $PWD | grep -qe "install_imager_deps$" || return 0
-    bbwarn "sstate_prepare\n\t pwd: $PWD\n\t pkg: ${SSTATE_PKG}\n\t zip:"\
-        $(du -ms "${SCHROOT_OVERLAY_DIR}/upper.tar.zstd")
-    mkdir -p $(dirname "${SSTATE_PKG}")
-    cp -f "${SCHROOT_OVERLAY_DIR}/upper.tar.zstd" "${SSTATE_PKG}"
-}
-
-install_imager_deps_sstate_finalize() {
-    echo $PWD | grep -qe "install_imager_deps$" || return 0
-    bbwarn "sstate_finalize on $PWD\n\t found:"\
-        $(du -ms ${SSTATE_PKG} 2>/dev/null ||:)
-}
-
-do_install_imager_deps_setscene[dirs] = "${SCHROOT_OVERLAY_DIR}"
-python do_install_imager_deps_setscene() {
-    rfsd = d.getVar("ROOTFSDIR", True) or bb.fatal("ROOTFSDIR is not defined")
-    bb.warn("do_install_imager_deps_setscene\n\t rootfs: %s" % rfsd)
-    try:
-        sstate_setscene(d)
-    except:
-        return 0
-}
-addtask do_install_imager_deps_setscene before do_install_imager_deps after do_deploy_deb
-
-#CLEANFUNCS = "clean_deploy"
-#clean_deploy() {
-#    rm -f "${DEPLOY_ISAR_BOOTSTRAP}"
-#}
-
 do_install_imager_deps[depends] = "${SCHROOT_DEP} isar-apt:do_cache_config"
 do_install_imager_deps[deptask] = "do_deploy_deb"
 do_install_imager_deps[lockfiles] += "${REPO_ISAR_DIR}/isar.lock"
 do_install_imager_deps[network] = "${TASK_USE_NETWORK_AND_SUDO}"
 do_install_imager_deps() {
-    bbwarn "starts on ${SCHROOT_OVERLAY_DIR}\n\t rootfsdir: ${ROOTFSDIR}\n\t workdir: ${WORKDIR}"
+    set -e
+
     if [ -z "${@d.getVar("IMAGER_INSTALL", True).strip()}" ]; then
         sudo -E chroot ${SCHROOT_DIR} /usr/bin/apt-get -y clean
         return 0
@@ -63,25 +30,45 @@ do_install_imager_deps() {
 
     schroot -r -c ${session_id} "$@"
 
-    set -e
-if true; then
-#   ( cd "${DEBDIR}/${distro}"
-#       md5sum --quiet -c "${SSTATE_PKG}.md5sum" ||\
-#           rm -f ${SCHROOT_OVERLAY_DIR}/upper.tar.zstd )
+    mksha() {
+        cd "${DEBDIR}/${distro}"
+        for i in $(echo "$@" | sort | uniq); do
+            md5sum "$(ls -1r $i*.deb $i*.DEB 2>/dev/null | head -n1)"
+        done | sha1sum | cut -d' ' -f1
+    }
+
+    local pkg="sstate:${PN}:${PACKAGE_ARCH}${TARGET_VENDOR}-${TARGET_OS}:${PV}:${PR}"
+    pkg="${SSTATE_DIR}/${SSTATE_EXTRAPATH}${pkg}:${PACKAGE_ARCH}:${SSTATE_VERSION}"
+    pkg="${pkg}:$(mksha ${IMAGER_INSTALL})_install_imager_deps.tar.zst"
+
+    bbwarn "starts on ${SCHROOT_OVERLAY_DIR}\n\t rootfsdir: ${ROOTFSDIR}\n\t"\
+        "workdir: ${WORKDIR}\n\t pkg: "$(du -ms "${pkg}" 2>/dev/null || echo "${pkg}")
+
+    local old=$(cat "${SCHROOT_OVERLAY_DIR}/upper.tar.zstd.sha" 2>/dev/null ||:)
+    if [ "${sha}" != "${old}" ]; then
+        bbwarn "sha differ, cur: ${sha}, old: ${old}"
+        rm -f "${SCHROOT_OVERLAY_DIR}/upper.tar".* upper.tar
+    fi
+
     if [ -e ${SCHROOT_OVERLAY_DIR}/upper.tar.zstd ]; then
         ( cd ${SCHROOT_OVERLAY_DIR}
-          sudo unzstd ${ZSTD_OPTS} upper.tar.zstd -qfo upper.tar )
-        bbwarn "upper found zip: "$(du -ms ${SCHROOT_OVERLAY_DIR}/upper.tar.zstd)
-        bbwarn "upper found tar: "$(du -ms ${SCHROOT_OVERLAY_DIR}/upper.tar)
+          unzstd ${ZSTD_OPTS} upper.tar.zstd -qfo upper.tar )
+        bbwarn "upper found zip: "$(du -ms "${SCHROOT_OVERLAY_DIR}/upper.tar.zstd")
+        bbwarn "upper found tar: "$(du -ms "${SCHROOT_OVERLAY_DIR}/upper.tar")
+    elif [ -e "${pkg}" ]; then
+        unzstd ${ZSTD_OPTS} "${pkg}" -qfo "${SCHROOT_OVERLAY_DIR}/upper.tar"
+        bbwarn "upper cache tar: "$(du -ms "${SCHROOT_OVERLAY_DIR}/upper.tar")
+        bbwarn "upper cache pkg: "$(du -ms "${pkg}")
+        echo "${sha}" > "${SCHROOT_OVERLAY_DIR}/upper.tar.zstd.sha"
     else
-        deb_dl_dir_import ${SCHROOT_DIR} ${distro}
-        sudo rm -f ${SCHROOT_OVERLAY_DIR}/upper.tar
+        deb_dl_dir_import "${SCHROOT_DIR}" "${distro}"
+        sudo rm -f "${SCHROOT_OVERLAY_DIR}/upper.tar"
         export XZ_THREADS="${@d.getVar("XZ_THREADS", True).strip()}"
         bbwarn "do_install_imager_deps xz: ${XZ_THREADS}, overlay: ${SCHROOT_OVERLAY_DIR}\n\t" \
             "schroot: ${SCHROOT_DIR}"
         E="${@ isar_export_proxies(d)}"
     fi
-fi
+
     schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
         set -e
         cd ${SCHROOT_OVERLAY_DIR}
@@ -101,23 +88,32 @@ fi
         fi
 '
 
-if true; then
-    if [ ! -e ${SCHROOT_OVERLAY_DIR}/upper.tar.zstd ]; then
-        deb_dl_dir_export ${SCHROOT_DIR} ${distro}
+    ztrans() {
+        mkdir -p "$(dirname '${pkg}')"
+        cp -f "${SCHROOT_OVERLAY_DIR}/upper.tar.zstd" "${pkg}"
+        bbwarn "upper create pkg: "$(du -ms "${pkg}")
+    }
+
+    if [ -e "${pkg}" ]; then
+        :
+    elif [ -e "${SCHROOT_OVERLAY_DIR}/upper.tar.zstd" ]; then
+        ztrans
+    else
+        deb_dl_dir_export "${SCHROOT_DIR}" "${distro}"
         schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c 'apt-get -y clean'
-        sudo -E chroot ${SCHROOT_DIR} /usr/bin/apt-get -y clean
+        sudo -E chroot "${SCHROOT_DIR}" /usr/bin/apt-get -y clean
 
         overlaydir="${SCHROOT_OVERLAY_DIR}/${IMAGER_SCHROOT_SESSION_ID}"
-        sudo tar --one-file-system ${ROOTFS_TAR_OPTS} -C ${overlaydir} \
+        sudo tar --one-file-system ${ROOTFS_TAR_OPTS} -C "${overlaydir}" \
                 --exclude="usr/share/doc/" --exclude="usr/share/man" \
-                -f ${SCHROOT_OVERLAY_DIR}/upper.tar.zstd upper
-#       ( cd "${DEBDIR}/${distro}"; md5sum ${IMAGER_INSTALL} > "${SSTATE_PKG}.md5sum" )
-#       sstate_create_package
-        bbwarn "upper create dir: "$(sudo du -ms ${overlaydir}/upper)
-        bbwarn "upper create tar: "$(du -ms ${SCHROOT_OVERLAY_DIR}/upper.tar.zstd)
+                -f "${SCHROOT_OVERLAY_DIR}/upper.tar.zstd" upper
+        bbwarn "upper create dir: "$(sudo du -ms "${overlaydir}/upper")
+        bbwarn "upper create tar: "$(du -ms "${SCHROOT_OVERLAY_DIR}/upper.tar.zstd")
+        echo "${sha}" > "${SCHROOT_OVERLAY_DIR}/upper.tar.zstd.sha"
+        ztrans
     fi
-fi
-    sudo chown $(id -u):$(id -g) "${WORKDIR}"
+
+    sudo chown $(id -u):$(id -g) "${WORKDIR}" "${pkg}"
 
     bbwarn "ends on ${SCHROOT_DIR} ${distro}"
 }
