@@ -216,8 +216,7 @@ python do_rootfs_install() {
     progress_reporter = bb.progress.MultiStageProgressReporter(d, stage_weights)
 
     for cmd in cmds:
-#       bb.debug 2
-        bb.warn("%s is proceding with cmd: %s" % (inspect.stack()[0][3], cmd))
+        bb.warn("cmd: %s" % cmd)
         progress_reporter.next_stage()
 
         if (d.getVarFlag(cmd, 'isar-apt-lock') or "") == "acquire-before":
@@ -352,12 +351,6 @@ SSTATEPOSTINSTFUNCS += "rootfs_install_sstate_finalize"
 
 # the rootfs is owned by root, so we need some sudoing to pack and unpack
 rootfs_install_sstate_prepare() {
-#   bbdebug 2
-#   opts=$(echo $ROOTFS_TAR_EXCLUDE_OPTS | tr ' ' '\n' | sed -ne 's,--exclude=",-not -path "$d/,p')
-#   d="rootfs"
-#       find $d $opts -exec zstd --no-progress -2 --adapt -T8
-#           --exclude-compressed --sparse -fmo ${WORKDIR}/mnt/rootfs.zstd {} +
-
     set -e
     echo $PWD | grep -qe "-rootfs_install$" || return 0
     bbwarn "rootfs_install_sstate_prepare\n\t pwd: $PWD\n\t rootfs: "$(sudo du -ms ${WORKDIR}/rootfs 2>/dev/null ||:)
@@ -382,7 +375,8 @@ do_rootfs_install_sstate_prepare[lockfiles] = "${REPO_ISAR_DIR}/isar.lock"
 rootfs_install_sstate_finalize() {
     set -e
     echo $PWD | grep -qe "-rootfs_install$" || return 0
-    bbwarn "rootfs_install_sstate_finalize\n\t pwd: $PWD\n\t workdir: ${WORKDIR}\n\t cache: "$(du -ms ../rootfs.* rootfs.* 2>/dev/null ||:) &
+    bbwarn "rootfs_install_sstate_finalize\n\t pwd: $PWD\n\t workdir: ${WORKDIR}\n\t"\
+        "depimg: ${DEPLOY_DIR_IMAGE}\n\t depdir: ${DEPLOY_DIR}\n\t cache: "$(du -ms ../rootfs.* rootfs.* 2>/dev/null ||:)
     # this runs in SSTATE_INSTDIR
     # - after building the rootfs, the tar won't be there, but we also don't need to unpack
     # - after restoring from cache, there will be a tar which we unpack and then delete
