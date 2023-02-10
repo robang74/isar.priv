@@ -6,6 +6,8 @@
 # This class extends the image.bbclass for setting locales and purging unneeded
 # ones.
 
+#inherit deb-dl-dir
+
 LOCALE_GEN ?= "en_US.UTF-8 UTF-8\n\
                en_US ISO-8859-1\n"
 LOCALE_DEFAULT ?= "en_US.UTF-8"
@@ -33,9 +35,15 @@ image_install_localepurge_download() {
         /usr/bin/apt-get ${ROOTFS_APT_ARGS} --download-only localepurge
 }
 
-ROOTFS_INSTALL_COMMAND += "image_install_localepurge_install"
+#ROOTFS_INSTALL_COMMAND += "image_install_localepurge_install"
+ROOTFS_INSTALL_COMMAND_BEFORE_EXPORT += "image_install_localepurge_install"
 image_install_localepurge_install[weight] = "700"
 image_install_localepurge_install[network] = "${TASK_USE_NETWORK_AND_SUDO}"
+#image_install_localepurge_install[vardeps] += "\
+#    deb_dl_dir_import \
+#    deb_dl_dir_export \
+#"
+
 image_install_localepurge_install() {
 
     # Generate locale and localepurge configuration:
@@ -69,8 +77,10 @@ __EOF__
         else
             localepurge_state='p'
             echo 'localepurge was not installed (removing it later)'
+#           deb_dl_dir_import ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
             chroot '${ROOTFSDIR}' sh -c "export XZ_DEFAULTS='-T ${XZ_THREADS}';
                 apt-get ${ROOTFS_APT_ARGS} localepurge"
+#           deb_dl_dir_export ${ROOTFSDIR} ${ROOTFS_BASE_DISTRO}-${BASE_DISTRO_CODENAME}
         fi
 
         cat '${WORKDIR}/locale.gen' >> '${ROOTFSDIR}/etc/locale.gen'

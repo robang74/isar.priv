@@ -161,6 +161,10 @@ generate_wic_image() {
         bbfatal "/var/cache/apt/archives contains packages but it"\
             "supposed not, abort" 2>/dev/null ||:
 
+    sudo find /var/cache/apt/archives -iname \*.deb -type f -exec \
+        bbfatal "/var/cache/apt/archives contains packages but it"\
+            "supposed not, abort" 2>/dev/null ||:
+
     imager_run -p -d ${PP_WORK} -u root <<'EOIMAGER'
         trap 'rm -rf ${wicdir} ${IMAGE_ROOTFS}/../pseudo ${PP_DEPLOY}/${IMAGE_FULLNAME}.wic*' EXIT
         set -e
@@ -197,9 +201,10 @@ generate_wic_image() {
                     mv -f ${f} ${PP_DEPLOY}/${IMAGE_FULLNAME}.wic${suffix}
                 done
         fi
+
+        trap -- EXIT
         rm -rf "${wicdir}"
         rm -rf ${IMAGE_ROOTFS}/../pseudo
-        trap - EXIT
 EOIMAGER
 
     sudo chown -R $(stat -c "%U" ${LAYERDIR_core}) ${LAYERDIR_core} ${LAYERDIR_isar} ${SCRIPTSDIR} || true
