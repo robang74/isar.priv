@@ -93,7 +93,11 @@ deb_dl_dir_import() {
     bbwarn "deb_dl_dir_import "$(sudo du -ms $apc | cut -f1)" Mb\n\t apc: $apc\n\t adn: $adn"
     flock -Fs "${DEBDIR}".lock sudo -Es << 'EOSUDO'
         mkdir -p "${apc}" "${adn}"
-        mount ${mro} -o bind "${apc}" "${adn}" || exit 1
+        if ! mountpoint -q "${adn}"; then
+            if ! mount ${mro} -o bind "${apc}" "${adn}"; then
+                exit 1
+            fi
+        fi
 
         test "${nol}" = "nolists" && exit 0
 
