@@ -106,7 +106,8 @@ dpkg_runbuild() {
     sh -c "cd ${WORKDIR}; dpkg-source -q -b ${PPS}"
     DSC_FILE=$(sudo find ${WORKDIR} -name "${DEB_SOURCE_NAME}*.dsc" -print)
 
-    bbwarn "dpkg_runbuild in pwd: $PWD\n\t chroot: ${SBUILD_CHROOT}\n\t workpps: ${WORKDIR}/${PPS}\n\t dsc: "${DSC_FILE}
+    bbwarn "dpkg_runbuild in pwd: $PWD\n\t chroot: ${SBUILD_CHROOT}\n\t workpps: ${WORKDIR}/${PPS}\n\t"\
+        "dsc: ${DSC_FILE}\n\t workdir: ${WORKDIR}\n\t rootfs: "$(sudo du -ms "${WORKDIR}/rootfs")
 
     sbuild -A -n -c ${SBUILD_CHROOT} --extra-repository="${ISAR_APT_REPO}" \
         --host=${PACKAGE_ARCH} --build=${SBUILD_HOST_ARCH} ${profiles} \
@@ -126,7 +127,4 @@ dpkg_runbuild() {
 
     sbuild_dpkg_log_export "${WORKDIR}/rootfs/dpkg_partial.log"
     deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}"
-
-    # Cleanup apt artifacts
-    sudo rm -rf ${WORKDIR}/rootfs
 }

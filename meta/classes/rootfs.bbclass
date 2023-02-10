@@ -160,6 +160,20 @@ rootfs_install_pkgs_download() {
         /usr/bin/apt-get ${ROOTFS_APT_ARGS} --download-only ${ROOTFS_PACKAGES}
 }
 
+ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_install"
+rootfs_install_pkgs_install[weight] = "8000"
+rootfs_install_pkgs_install[network] = "${TASK_USE_SUDO}"
+rootfs_install_pkgs_install() {
+    sudo -E chroot "${ROOTFSDIR}" sh -c "\
+        set -e
+        export XZ_OPT='-T ${XZ_THREADS}'
+        apt-get ${ROOTFS_APT_ARGS} -y ${ROOTFS_PACKAGES}
+"
+    # RAF: replace gzip with pigz for parallelism
+    pigz_replaces_gzip "${ROOTFSDIR}"
+}
+ROOTFS_PACKAGES += "pigz"
+
 ROOTFS_INSTALL_COMMAND_BEFORE_EXPORT ??= ""
 ROOTFS_INSTALL_COMMAND += "${ROOTFS_INSTALL_COMMAND_BEFORE_EXPORT}"
 
@@ -176,20 +190,6 @@ rootfs_install_clean_files() {
         /bin/rm -f ${ROOTFS_CLEAN_FILES}
 }
 
-ROOTFS_INSTALL_COMMAND += "rootfs_install_pkgs_install"
-rootfs_install_pkgs_install[weight] = "8000"
-rootfs_install_pkgs_install[network] = "${TASK_USE_SUDO}"
-rootfs_install_pkgs_install() {
-    sudo -E chroot "${ROOTFSDIR}" sh -c "\
-        set -e
-        export XZ_OPT='-T ${XZ_THREADS}'
-        apt-get ${ROOTFS_APT_ARGS} -y ${ROOTFS_PACKAGES}
-"
-    # RAF: replace gzip with pigz for parallelism
-    pigz_replaces_gzip "${ROOTFSDIR}"
-}
-ROOTFS_PACKAGES += "pigz"
-
 do_rootfs_install[root_cleandirs] = "${ROOTFSDIR}"
 do_rootfs_install[vardeps] += "${ROOTFS_CONFIGURE_COMMAND} ${ROOTFS_INSTALL_COMMAND}"
 do_rootfs_install[vardepsexclude] += "IMAGE_ROOTFS"
@@ -197,8 +197,6 @@ do_rootfs_install[depends] = "isar-bootstrap-${@'target' if d.getVar('ROOTFS_ARC
 do_rootfs_install[recrdeptask] = "do_deploy_deb"
 do_rootfs_install[network] = "${TASK_USE_SUDO}"
 python do_rootfs_install() {
-    import inspect
-
     configure_cmds = (d.getVar("ROOTFS_CONFIGURE_COMMAND", True) or "").split()
     install_cmds = (d.getVar("ROOTFS_INSTALL_COMMAND", True) or "").split()
 
@@ -256,10 +254,7 @@ cache_deb_src() {
 
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'clean-package-cache', 'rootfs_postprocess_clean_package_cache', '', d)}"
 rootfs_postprocess_clean_package_cache() {
-    sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get -y clean
     sudo rm -rf "${ROOTFSDIR}/var/lib/apt/lists/"*
-    # remove apt-cache folder itself (required in case rootfs is provided by sstate cache)
-    sudo rm -rf "${ROOTFSDIR}/var/cache/apt/archives"
 }
 
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('ROOTFS_FEATURES', 'clean-log-files', 'rootfs_postprocess_clean_log_files', '', d)}"

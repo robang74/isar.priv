@@ -158,6 +158,11 @@ generate_wic_image() {
     if [ ! -z "${SOURCE_DATE_EPOCH}" ]; then
         export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH}"
     fi
+
+    sudo find /var/cache/apt/archives -iname \*.deb -type f -exec \
+        bbfatal "/var/cache/apt/archives contains packages but it"\
+            "supposed not, abort" 2>/dev/null ||:
+
     imager_run -p -d ${PP_WORK} -u root <<'EOSUDO'
         trap 'rm -rf ${wicdir} ${IMAGE_ROOTFS}/../pseudo ${PP_DEPLOY}/${IMAGE_FULLNAME}.wic*' EXIT
         set -e
@@ -196,7 +201,7 @@ generate_wic_image() {
         fi
         rm -rf "${wicdir}"
         rm -rf ${IMAGE_ROOTFS}/../pseudo
-        trap - EXIT
+        trap -- EXIT
 EOSUDO
     sudo chown -R $(stat -c "%U" ${LAYERDIR_core}) ${LAYERDIR_core} ${LAYERDIR_isar} ${SCRIPTSDIR} || true
 }
