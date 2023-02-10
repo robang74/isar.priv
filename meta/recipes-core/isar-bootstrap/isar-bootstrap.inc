@@ -291,14 +291,19 @@ do_bootstrap() {
     E="${@ isar_export_proxies(d)}"
     export BOOTSTRAP_FOR_HOST debootstrap_args E
 
-    sudo rm -rf --one-file-system "${ROOTFSDIR}"
+    for i in "${ROOTFSDIR}"; do
+        test -d "$i" || continue
+        sudo find "$i/" -type d -not -path "$i/var/*" -not -path "$i/var" -exec rm -rf {} +
+        test -d "$i/var" || continue
+        sudo find "$i/var" -not -type d -not -iname '*.deb' -exec rm -f {} +
+    done
     deb_dl_dir_import "${ROOTFSDIR}" "${BOOTSTRAP_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
 
     test -z "${HOST_ARCH}" -o -z "${ROOTFS_ARCH}" -o -z "${DISTRO_ARCH}" && \
         bbwarn "*** ATTENTION *** BOOTSTRAP_FOR_HOST=0, DEBOOTSTRAP=${DEBOOTSTRAP},"\
             "HOST_ARCH=${HOST_ARCH}, ROOTFS_ARCH=${ROOTFS_ARCH}, DISTRO_ARCH=${DISTRO_ARCH}."
 
-    bbwarn "args: ${debootstrap_args}, comp: "${@get_distro_components_argument(d)}
+    bbwarn "\n\t args: ${debootstrap_args}\n\t comp: "${@get_distro_components_argument(d)}
 
     sudo -E -s <<'EOSUDO'
         set -e
@@ -319,6 +324,7 @@ EOSUDO
     pigz_replaces_gzip "${ROOTFSDIR}"
 
     sudo -E -s <<'EOSUDO'
+        set -e
         # Install apt config
         mkdir -p "${ROOTFSDIR}/etc/apt/preferences.d"
         install -v -m644 "${APTPREFS}" \
@@ -408,9 +414,6 @@ EOSUDO
         ln -Tfsr "${ROOTFSDIR}" "${DEPLOY_ISAR_BOOTSTRAP}"
 EOSUDO
     deb_dl_dir_export "${ROOTFSDIR}" "${BOOTSTRAP_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
-
-    # Cleanup apt cache
-    sudo -E chroot "${ROOTFSDIR}" /usr/bin/apt-get -y clean
 }
 
 addtask bootstrap before do_build after do_generate_keyrings

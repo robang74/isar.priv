@@ -341,7 +341,7 @@ rootfs_install_pkgs_install:prepend() {
 image_install_localepurge_install:append() {
     bbwarn "image_install_localepurge_install:append in ${ROOTFSDIR}"
     sudo chroot "${ROOTFSDIR}" sh << 'EOCHSH'
-        set -ex
+        set -e
 
         test -e /usr/bin/.mandb || exit 0
         ln -Pf  /usr/bin/.mandb /usr/bin/mandb && \

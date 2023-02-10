@@ -87,10 +87,11 @@ deb_dl_dir_import() {
     bdn="${1}/var/lib/apt/lists/"
     bpc="${DEBDIR}/lists/${2}"
     export adn bdn apc bpc nol
+    trap "umount -l '${adn}' 2>/dev/null" EXIT
+    bbwarn "deb_dl_dir_import\n\t apc: $apc\n\t adn: $adn"
     flock -Fs "${DEBDIR}".lock sudo -Es << 'EOSUDO'
-        mkdir -p "${adn}" && \
-            find "${apc}" -maxdepth 1 -type f -iname \*.deb \
-                -exec ln -Pf -t "${adn}" {} + 2>/dev/null
+        mkdir -p "${apc}" "${adn}"
+        mount -o bind "${apc}" "${adn}" || exit 1
 
         test "${nol}" = "nolists" && exit 0
 
@@ -108,10 +109,9 @@ deb_dl_dir_export() {
     bdn="${1}/var/lib/apt/lists/"
     bpc="${DEBDIR}/lists/${2}"
     export adn bdn apc bpc nol
+    bbwarn "deb_dl_dir_export\n\t apc: $apc\n\t adn: $adn"
     flock -F "${DEBDIR}".lock sudo -Es << 'EOSUDO'
-        mkdir -p "${apc}" && \
-            find "${adn}" -maxdepth 1 -type f -iname \*.deb \
-                -exec ln -P -t "${apc}" {} + 2>/dev/null
+        mountpoint -q "${adn}" && umount -l "${adn}"
 
         test "${nol}" = "nolists" && exit 0
 
