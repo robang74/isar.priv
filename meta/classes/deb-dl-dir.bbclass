@@ -86,12 +86,14 @@ deb_dl_dir_import() {
     adn="${1}/var/cache/apt/archives/"
     bdn="${1}/var/lib/apt/lists/"
     bpc="${DEBDIR}/lists/${2}"
-    export adn bdn apc bpc nol
+    mro=""
+    test "$3" = "readonly" && mro="-r"
+    export adn bdn apc bpc nol mro
     trap "umount -l '${adn}' 2>/dev/null" EXIT
-    bbwarn "deb_dl_dir_import\n\t apc: $apc\n\t adn: $adn"
+    bbwarn "deb_dl_dir_import "$(sudo du -ms $apc | cut -f1)" Mb\n\t apc: $apc\n\t adn: $adn"
     flock -Fs "${DEBDIR}".lock sudo -Es << 'EOSUDO'
         mkdir -p "${apc}" "${adn}"
-        mount -o bind "${apc}" "${adn}" || exit 1
+        mount ${mro} -o bind "${apc}" "${adn}" || exit 1
 
         test "${nol}" = "nolists" && exit 0
 
@@ -109,7 +111,7 @@ deb_dl_dir_export() {
     bdn="${1}/var/lib/apt/lists/"
     bpc="${DEBDIR}/lists/${2}"
     export adn bdn apc bpc nol
-    bbwarn "deb_dl_dir_export\n\t apc: $apc\n\t adn: $adn"
+    bbwarn "deb_dl_dir_export "$(sudo du -ms $apc | cut -f1)" Mb\n\t apc: $apc\n\t adn: $adn"
     flock -F "${DEBDIR}".lock sudo -Es << 'EOSUDO'
         mountpoint -q "${adn}" && umount -l "${adn}"
 
