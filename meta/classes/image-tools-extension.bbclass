@@ -70,24 +70,24 @@ do_install_imager_deps() {
         E="${@ isar_export_proxies(d)}"
     fi
 
-    schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c ' \
+    schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c " \
         set -e
-        cd ${SCHROOT_OVERLAY_DIR}
+        cd '${SCHROOT_OVERLAY_DIR}'
         if [ -e upper.tar ]; then
-            trap "rm -f upper.tar" EXIT
+            trap 'rm -f \"${SCHROOT_OVERLAY_DIR}/upper.tar\"' EXIT
             tar --strip-components=1 --same-owner -C / -xpSf upper.tar
         else
             apt-get -y update \
-                -o Dir::Etc::SourceList="sources.list.d/isar-apt.list" \
-                -o Dir::Etc::SourceParts="-" \
-                -o APT::Get::List-Cleanup="0"
-            export XZ_OPT="-T ${XZ_THREADS}"
+                -o Dir::Etc::SourceList='sources.list.d/isar-apt.list' \
+                -o Dir::Etc::SourceParts='-' \
+                -o APT::Get::List-Cleanup='0'
+            export XZ_OPT='-T ${XZ_THREADS}'
             rm -rf /usr/share/man /usr/share/doc
             apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends \
                 --allow-unauthenticated --allow-downgrades -y install \
                 --reinstall ${IMAGER_INSTALL}
         fi
-'
+"
 
     ztrans() {
         mkdir -p "$(dirname '${pkg}')"
@@ -101,7 +101,6 @@ do_install_imager_deps() {
         ztrans
     else
         deb_dl_dir_export "${SCHROOT_DIR}" "${distro}"
-
         overlaydir="${SCHROOT_OVERLAY_DIR}/${IMAGER_SCHROOT_SESSION_ID}"
         sudo tar --one-file-system ${ROOTFS_TAR_OPTS} -C "${overlaydir}" \
                 --exclude="usr/share/doc/" --exclude="usr/share/man" \
