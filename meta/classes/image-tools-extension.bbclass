@@ -41,7 +41,7 @@ do_install_imager_deps() {
     pkg="${pkg}:$(mksha ${IMAGER_INSTALL})_install_imager_deps.tar.zst"
 
     bbwarn "starts on ${SCHROOT_OVERLAY_DIR}\n\t rootfsdir: ${ROOTFSDIR}\n\t"\
-        "workdir: ${WORKDIR}\n\t pkg: "$(du -ms "${pkg}" 2>/dev/null || echo "${pkg}")
+        "workdir: ${WORKDIR}\n\t tmpdir: ${TMPDIR}\n\t pkg: "$(du -ms "${pkg}" 2>/dev/null || echo "${pkg}")
 
     local old=$(cat "${SCHROOT_OVERLAY_DIR}/upper.tar.zstd.sha" 2>/dev/null ||:)
     if [ "${sha}" != "${old}" ]; then
@@ -60,7 +60,6 @@ do_install_imager_deps() {
         bbwarn "upper cache pkg: "$(du -ms "${pkg}")
         echo "${sha}" > "${SCHROOT_OVERLAY_DIR}/upper.tar.zstd.sha"
     else
-        deb_dl_dir_import "${SCHROOT_DIR}" "${distro}"
         sudo rm -f "${SCHROOT_OVERLAY_DIR}/upper.tar"
         export XZ_THREADS="${@d.getVar("XZ_THREADS", True).strip()}"
         bbwarn "do_install_imager_deps xz: ${XZ_THREADS}, overlay: ${SCHROOT_OVERLAY_DIR}\n\t" \
@@ -68,6 +67,9 @@ do_install_imager_deps() {
         E="${@ isar_export_proxies(d)}"
     fi
 
+    dls="/var/lib/apt/lists"
+    ark="/var/cache/apt/archives"
+    top=$(echo "${DEBDIR}" | sed -e "s,/build,,")
     schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c " \
         set -e
         cd '${SCHROOT_OVERLAY_DIR}'
@@ -75,6 +77,20 @@ do_install_imager_deps() {
             trap 'rm -f \"${SCHROOT_OVERLAY_DIR}/upper.tar\"' EXIT
             tar --strip-components=1 --same-owner -C / -xpSf upper.tar
         else
+            trap 'umount -l $ark; umount -l $dls' EXIT
+
+            mkdir -p $ark
+            mount -o bind '$top/${distro}' $ark
+            mount -o remount,rw $ark
+            mkdir -p $ark/partial
+            rm -f $ark/lock
+
+            mkdir -p $dls
+            mount -o bind '$top/lists/${distro}' $dls
+            mount -o remount,rw $dls
+            mkdir -p $dls/partial
+            rm -f $dls/lock
+
             apt-get -y update \
                 -o Dir::Etc::SourceList='sources.list.d/isar-apt.list' \
                 -o Dir::Etc::SourceParts='-' \
@@ -98,7 +114,6 @@ do_install_imager_deps() {
     elif [ -e "${SCHROOT_OVERLAY_DIR}/upper.tar.zstd" ]; then
         ztrans
     else
-        deb_dl_dir_export "${SCHROOT_DIR}" "${distro}"
         overlaydir="${SCHROOT_OVERLAY_DIR}/${IMAGER_SCHROOT_SESSION_ID}"
         sudo tar --one-file-system ${ROOTFS_TAR_OPTS} -C "${overlaydir}" \
                 --exclude="usr/share/doc/" --exclude="usr/share/man" \
