@@ -75,12 +75,6 @@ dpkg_runbuild() {
         distro="${HOST_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
     fi
 
-    deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}"
-
-    deb_dir="/var/cache/apt/archives"
-    ext_root="${PP}/rootfs"
-    ext_deb_dir="${ext_root}${deb_dir}"
-
     if [ ${USE_CCACHE:-0} -eq 1 ]; then
         schroot_configure_ccache
     fi
@@ -109,19 +103,28 @@ dpkg_runbuild() {
     bbwarn "dpkg_runbuild in pwd: $PWD\n\t chroot: ${SBUILD_CHROOT}\n\t workpps: ${WORKDIR}/${PPS}\n\t"\
         "dsc: ${DSC_FILE}\n\t workdir: ${WORKDIR}\n\t rootfs: "$(sudo du -ms "${WORKDIR}/rootfs")
 
+    deb_dir="/var/cache/apt/archives"
+    dls_dir="/var/lib/apt/lists"
+    ext_root="${PP}/rootfs"
+    ext_deb_dir="${ext_root}${deb_dir}"
+    ext_dls_dir="${ext_root}${dls_dir}"
+    deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}"
+
     sbuild -A -n -c ${SBUILD_CHROOT} --extra-repository="${ISAR_APT_REPO}" \
         --host=${PACKAGE_ARCH} --build=${SBUILD_HOST_ARCH} ${profiles} \
         --no-run-lintian --no-run-piuparts --no-run-autopkgtest --resolve-alternatives \
         --no-apt-update \
+        --chroot-setup-commands="mount -o bind ${ext_deb_dir} ${deb_dir}" \
+        --chroot-setup-commands="mount -o bind ${ext_dls_dir} ${dls_dir}" \
         --chroot-setup-commands="echo \"Package: *\nPin: release n=${DEBDISTRONAME}\nPin-Priority: 1000\" > /etc/apt/preferences.d/isar-apt" \
         --chroot-setup-commands="echo \"APT::Get::allow-downgrades 1;\" > /etc/apt/apt.conf.d/50isar-apt" \
         --chroot-setup-commands="rm -f /var/log/dpkg.log" \
-        --chroot-setup-commands="mount -o bind ${ext_deb_dir} ${deb_dir}" \
         --chroot-setup-commands="export XZ_OPT='-T 8'" \
         ${DPKG_SBUILD_EXTRA_ARGS} \
         --finished-build-commands="rm -f ${deb_dir}/sbuild-build-depends-main-dummy_*.deb" \
-        --finished-build-commands="umount ${deb_dir}" \
         --finished-build-commands="cp /var/log/dpkg.log ${ext_root}/dpkg_partial.log" \
+        --finished-build-commands="umount -l ${deb_dir}" \
+        --finished-build-commands="umount -l ${dls_dir}" \
         --debbuildopts="--source-option=-I" \
         --build-dir=${WORKDIR} --dist="isar" ${DSC_FILE}
 
