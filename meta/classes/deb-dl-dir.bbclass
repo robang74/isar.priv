@@ -89,8 +89,9 @@ deb_dl_dir_import() {
     mro=""
     test "$3" = "readonly" && mro="-r"
     export adn bdn apc bpc nol mro
-    trap "umount -l '${adn}' 2>/dev/null" EXIT
-    bbwarn "deb_dl_dir_import "$(sudo du -ms $apc | cut -f1)" Mb\n\t apc: $apc\n\t adn: $adn"
+    trap "sudo umount -l '${adn}'; sudo umount -l '${bdn}'" EXIT
+    bbwarn "deb_dl_dir_import "$(sudo du -ms $apc | cut -f1)" Mb\n\t"\
+        "apc: $apc\n\t adn: $adn\n\t bdn: ${bdn}\n\t bpc: ${bpc}"
     flock -Fs "${DEBDIR}".lock sudo -Es << 'EOSUDO'
         mkdir -p "${apc}" "${adn}"
         if ! mountpoint -q "${adn}"; then
@@ -101,9 +102,12 @@ deb_dl_dir_import() {
 
         test "${nol}" = "nolists" && exit 0
 
-        mkdir -p "${bdn}" && \
-            find "${bpc}" -maxdepth 1 -type f -not -name lock -not -name \
-                _isar-apt\* -exec ln -Pf -t "${bdn}" {} + 2>/dev/null
+        mkdir -p "${bdn}" "${bpc}"
+        if ! mountpoint -q "${bdn}"; then
+            if ! mount ${mro} -o bind "${bpc}" "${bdn}"; then
+                exit 1
+            fi
+        fi
 EOSUDO
 }
 
@@ -121,9 +125,7 @@ deb_dl_dir_export() {
 
         test "${nol}" = "nolists" && exit 0
 
-        mkdir -p "${bpc}" && \
-            find "${bdn}" -maxdepth 1 -type f -not -name lock -not -name \
-                _isar-apt\* -exec ln -Pf -t "${bpc}" {} + 2>/dev/null
+        mountpoint -q "${bdn}" && umount -l "${bdn}"
 EOSUDO
 }
 
