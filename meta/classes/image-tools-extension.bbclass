@@ -81,17 +81,13 @@ do_install_imager_deps() {
         else
             trap 'umount -l $ark; umount -l $dls' EXIT
 
-            mkdir -p $ark
+            mkdir -p $ark $dls
             mount -o bind '$top/${distro}' $ark
             mount -o remount,rw $ark
-            mkdir -p $ark/partial
-            rm -f $ark/lock
-
-            mkdir -p $dls
             mount -o bind '$top/lists/${distro}' $dls
             mount -o remount,rw $dls
-            mkdir -p $dls/partial
-            rm -f $dls/lock
+            rm -f $ark/lock $dls/lock
+            mkdir -p $ark/partial $dls/partial
 
             apt-get -y update \
                 -o Dir::Etc::SourceList='sources.list.d/isar-apt.list' \
