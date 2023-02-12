@@ -101,33 +101,32 @@ dpkg_runbuild() {
     DSC_FILE=$(sudo find ${WORKDIR} -name "${DEB_SOURCE_NAME}*.dsc" -print)
 
     bbwarn "dpkg_runbuild in pwd: $PWD\n\t chroot: ${SBUILD_CHROOT}\n\t workpps: ${WORKDIR}/${PPS}\n\t"\
-        "dsc: ${DSC_FILE}\n\t workdir: ${WORKDIR}\n\t rootfs: "$(sudo du -ms "${WORKDIR}/rootfs")
+        "dsc: ${DSC_FILE}\n\t workdir: ${WORKDIR}\n\t deb: ${DEBDIR}"
 
+    top_dir=$(echo "${DEBDIR}" | sed -e "s,/build,,")
+    ext_dls_dir="${top_dir}/lists/${distro}"
+    ext_deb_dir="${top_dir}/${distro}"
     deb_dir="/var/cache/apt/archives"
     dls_dir="/var/lib/apt/lists"
-    ext_root="${PP}/rootfs"
-    ext_deb_dir="${ext_root}${deb_dir}"
-    ext_dls_dir="${ext_root}${dls_dir}"
-    deb_dl_dir_import "${WORKDIR}/rootfs" "${distro}"
+    rootfs="${WORKDIR}/rootfs"
 
     sbuild -A -n -c ${SBUILD_CHROOT} --extra-repository="${ISAR_APT_REPO}" \
         --host=${PACKAGE_ARCH} --build=${SBUILD_HOST_ARCH} ${profiles} \
         --no-run-lintian --no-run-piuparts --no-run-autopkgtest --resolve-alternatives \
         --no-apt-update \
-        --chroot-setup-commands="mount -o bind ${ext_deb_dir} ${deb_dir}" \
-        --chroot-setup-commands="mount -o bind ${ext_dls_dir} ${dls_dir}" \
+        --chroot-setup-commands="mkdir -p ${deb_dir} ${dls_dir}; mount -o bind ${ext_deb_dir} ${deb_dir}" \
+        --chroot-setup-commands="mount -o bind ${ext_dls_dir} ${dls_dir}; rm -f ${deb_dir}/lock ${dls_dir}/lock" \
         --chroot-setup-commands="echo \"Package: *\nPin: release n=${DEBDISTRONAME}\nPin-Priority: 1000\" > /etc/apt/preferences.d/isar-apt" \
         --chroot-setup-commands="echo \"APT::Get::allow-downgrades 1;\" > /etc/apt/apt.conf.d/50isar-apt" \
         --chroot-setup-commands="rm -f /var/log/dpkg.log" \
         --chroot-setup-commands="export XZ_OPT='-T 8'" \
         ${DPKG_SBUILD_EXTRA_ARGS} \
         --finished-build-commands="rm -f ${deb_dir}/sbuild-build-depends-main-dummy_*.deb" \
-        --finished-build-commands="cp /var/log/dpkg.log ${ext_root}/dpkg_partial.log" \
-        --finished-build-commands="umount -l ${deb_dir}" \
-        --finished-build-commands="umount -l ${dls_dir}" \
+        --finished-build-commands="cp /var/log/dpkg.log ${PP}/dpkg_partial.log" \
+        --finished-build-commands="umount -l ${deb_dir}; umount -l ${dls_dir}" \
         --debbuildopts="--source-option=-I" \
         --build-dir=${WORKDIR} --dist="isar" ${DSC_FILE}
 
-    sbuild_dpkg_log_export "${WORKDIR}/rootfs/dpkg_partial.log"
-    deb_dl_dir_export "${WORKDIR}/rootfs" "${distro}"
+    sbuild_dpkg_log_export "${WORKDIR}/dpkg_partial.log"
+    deb_dl_dir_export "${rootfs}" "${distro}"
 }
