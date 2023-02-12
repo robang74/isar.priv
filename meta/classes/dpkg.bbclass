@@ -108,25 +108,23 @@ dpkg_runbuild() {
     ext_deb_dir="${top_dir}/${distro}"
     deb_dir="/var/cache/apt/archives"
     dls_dir="/var/lib/apt/lists"
-    rootfs="${WORKDIR}/rootfs"
 
     sbuild -A -n -c ${SBUILD_CHROOT} --extra-repository="${ISAR_APT_REPO}" \
         --host=${PACKAGE_ARCH} --build=${SBUILD_HOST_ARCH} ${profiles} \
         --no-run-lintian --no-run-piuparts --no-run-autopkgtest --resolve-alternatives \
         --no-apt-update \
-        --chroot-setup-commands="mkdir -p ${deb_dir} ${dls_dir}; mount -o bind ${ext_deb_dir} ${deb_dir}" \
-        --chroot-setup-commands="mount -o bind ${ext_dls_dir} ${dls_dir}; rm -f ${deb_dir}/lock ${dls_dir}/lock" \
+        --chroot-setup-commands="mkdir -p ${deb_dir}/partial ${dls_dir}/partial; ln -sf ${ext_deb_dir}/*.deb ${deb_dir}/" \
+        --chroot-setup-commands="ln -sf ${ext_dls_dir}/* ${dls_dir}/; rm -f ${dls_dir}/lock ${deb_dir}/lock" \
         --chroot-setup-commands="echo \"Package: *\nPin: release n=${DEBDISTRONAME}\nPin-Priority: 1000\" > /etc/apt/preferences.d/isar-apt" \
         --chroot-setup-commands="echo \"APT::Get::allow-downgrades 1;\" > /etc/apt/apt.conf.d/50isar-apt" \
         --chroot-setup-commands="rm -f /var/log/dpkg.log" \
         --chroot-setup-commands="export XZ_OPT='-T 8'" \
         ${DPKG_SBUILD_EXTRA_ARGS} \
         --finished-build-commands="rm -f ${deb_dir}/sbuild-build-depends-main-dummy_*.deb" \
+        --finished-build-commands="cp -Ln --no-preserve=owner ${deb_dir}/*.deb -t ${ext_deb_dir}/" \
         --finished-build-commands="cp /var/log/dpkg.log ${PP}/dpkg_partial.log" \
-        --finished-build-commands="umount -l ${deb_dir}; umount -l ${dls_dir}" \
         --debbuildopts="--source-option=-I" \
         --build-dir=${WORKDIR} --dist="isar" ${DSC_FILE}
 
     sbuild_dpkg_log_export "${WORKDIR}/dpkg_partial.log"
-    deb_dl_dir_export "${rootfs}" "${distro}"
 }
