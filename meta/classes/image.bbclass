@@ -483,13 +483,10 @@ do_rootfs_finalize() {
         mountpoint -q '${ROOTFSDIR}/sys' && \
             umount -l ${ROOTFSDIR}/sys
 
-        aptdir="${ROOTFSDIR}/etc/apt"
-        rm -f "${aptdir}/apt.conf.d/50isar"
-        rm -f "${aptdir}/preferences.d/isar-apt"
-        rm -f "${aptdir}/sources.list.d/isar-apt.list"
-        rm -f "${aptdir}/sources.list.d/base-apt.list"
-        mv -f "${aptdir}/sources-list" \
-            "${aptdir}/sources.list.d/bootstrap.list" 2>/dev/null || :
+        if [ -e "${ROOTFSDIR}/etc/apt/sources-list" ]; then
+            mv "${ROOTFSDIR}/etc/apt/sources-list" \
+                "${ROOTFSDIR}/etc/apt/sources.list.d/bootstrap.list"
+        fi
 EOSUDO
 
     # Set same time-stamps to the newly generated file/folders in the
