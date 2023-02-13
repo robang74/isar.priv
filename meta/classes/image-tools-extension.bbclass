@@ -32,9 +32,14 @@ do_install_imager_deps() {
     fi
 
     mksha() {
-        cd "${DEBDIR}/${distro}"
+        local i deb
         for i in $(echo "$@" | sort | uniq); do
-            md5sum "$(ls -1r $i*.deb $i*.DEB 2>/dev/null | head -n1)"
+            deb=$(find "${REPO_ISAR_DIR}" -name $i[_-][0-9]\*.deb)
+            test -z "$deb" && \
+                deb=$(find "${DEBDIR}/${distro}" -name $i[_-][0-9]\*.deb 2>/dev/null)
+            test -z "$deb" && \
+                deb=$RANDOM
+            md5sum "$(ls -1r $deb 2>/dev/null | head -n1)"
         done | sha1sum | cut -d' ' -f1
     }
 
@@ -73,7 +78,7 @@ do_install_imager_deps() {
     ark="/var/cache/apt/archives"
     top=$(echo "${DEBDIR}" | sed -e "s,/build,,")
     schroot -r -c ${IMAGER_SCHROOT_SESSION_ID} -d / -u root -- sh -c " \
-        set -e
+        set -ex
         cd '${SCHROOT_OVERLAY_DIR}'
         if [ -e upper.tar ]; then
             trap 'rm -f \"${SCHROOT_OVERLAY_DIR}/upper.tar\"' EXIT
@@ -89,18 +94,21 @@ do_install_imager_deps() {
             rm -f $ark/lock $dls/lock
             mkdir -p $ark/partial $dls/partial
 
-            if [ -e /etc/apt/sources.list.d/isar-apt.list ]; then
-                apt-get -y update -o APT::Get::List-Cleanup='0' \
-                    -o Dir::Etc::SourceList='sources.list.d/isar-apt.list' \
-                    -o Dir::Etc::SourceParts='-'
-            else
-                apt-get -y update -o APT::Get::List-Cleanup='0'
-            fi
+            mkdir -p '/etc/apt/sources.list.d'
+            echo 'deb [trusted=yes] file:///isar-apt ${DEBDISTRONAME} main' > \
+                '/etc/apt/sources.list.d/isar-apt.list'
+
+            find / -name efibootguard_0.12_arm64.deb | grep pool
+
+#           apt-get -y update -o APT::Get::List-Cleanup='0' \
+#               -o Dir::Etc::SourceList='sources.list.d/isar-apt.list' \
+#               -o Dir::Etc::SourceParts='-'
+
             export XZ_OPT='-T ${XZ_THREADS}'
             rm -rf /usr/share/man /usr/share/doc
             apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends \
                 --allow-unauthenticated --allow-downgrades -y install \
-                --reinstall ${IMAGER_INSTALL}
+                --reinstall ${IMAGER_INSTALL} /build/tmp/deploy/isar-apt/iot2050-debian-arm64/apt/iot2050-debian/pool/main/e/efibootguard/efibootguard_0.12_arm64.deb
         fi
 "
 
