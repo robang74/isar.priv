@@ -89,10 +89,13 @@ do_install_imager_deps() {
             rm -f $ark/lock $dls/lock
             mkdir -p $ark/partial $dls/partial
 
-            apt-get -y update \
-                -o Dir::Etc::SourceList='sources.list.d/isar-apt.list' \
-                -o Dir::Etc::SourceParts='-' \
-                -o APT::Get::List-Cleanup='0'
+            if [ -e /etc/apt/sources.list.d/isar-apt.list ]; then
+                apt-get -y update -o APT::Get::List-Cleanup='0' \
+                    -o Dir::Etc::SourceList='sources.list.d/isar-apt.list' \
+                    -o Dir::Etc::SourceParts='-'
+            else
+                apt-get -y update -o APT::Get::List-Cleanup='0'
+            fi
             export XZ_OPT='-T ${XZ_THREADS}'
             rm -rf /usr/share/man /usr/share/doc
             apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends \

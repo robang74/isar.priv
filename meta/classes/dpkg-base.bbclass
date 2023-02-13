@@ -104,6 +104,7 @@ python() {
 }
 
 do_apt_fetch() {
+    bbwarn "SRC_APT: "${SRC_APT}
     E="${@ isar_export_proxies(d)}"
     schroot_create_configs
 
@@ -113,10 +114,26 @@ do_apt_fetch() {
     trap 'exit 1' INT HUP QUIT TERM ALRM USR1
     trap 'schroot_cleanup' EXIT
 
+    distro="${BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
+    if [ ${ISAR_CROSS_COMPILE} -eq 1 ]; then
+        distro="${HOST_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
+    fi
+
+    top_dir=$(echo "${DEBDIR}" | sed -e "s,/build,,")
+    ext_dls_dir="${top_dir}/lists/${distro}"
+    dls_dir="/var/lib/apt/lists"
+
     for uri in "${SRC_APT}"; do
-        schroot -d / -c ${SBUILD_CHROOT} -- \
-            sh -c 'mkdir -p /downloads/deb-src/"$1"/"$2" && cd /downloads/deb-src/"$1"/"$2" && apt-get -y --download-only --only-source source "$2"' my_script "${BASE_DISTRO}-${BASE_DISTRO_CODENAME}" "${uri}"
+        schroot -d / -c ${SBUILD_CHROOT} -u root -- sh -c '\
+            set -ex
+            mkdir -p /downloads/deb-src/"$1"/"$2" '${dls_dir}'/partial
+            find '${ext_dls_dir}' -type f -not -name lock -maxdepth 1 \
+                -exec ln -st '${dls_dir}' {} +
+            cd /downloads/deb-src/"$1"/"$2"
+            apt-get -y --download-only --only-source source "$2"
+            ' my_script "${BASE_DISTRO}-${BASE_DISTRO_CODENAME}" "${uri}"
     done
+
     schroot_delete_configs
 }
 
@@ -135,7 +152,8 @@ do_apt_fetch[network] = "${TASK_USE_NETWORK_AND_SUDO}"
 do_apt_fetch[depends] += "${SCHROOT_DEP}"
 
 do_apt_unpack() {
-    rm -rf ${S}
+    set -e
+    sudo rm -rf ${S}
     schroot_create_configs
 
     schroot_cleanup() {
@@ -144,16 +162,30 @@ do_apt_unpack() {
     trap 'exit 1' INT HUP QUIT TERM ALRM USR1
     trap 'schroot_cleanup' EXIT
 
+    distro="${BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
+    if [ ${ISAR_CROSS_COMPILE} -eq 1 ]; then
+        distro="${HOST_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
+    fi
+
+    top_dir=$(echo "${DEBDIR}" | sed -e "s,/build,,")
+    ext_dls_dir="${top_dir}/lists/${distro}"
+    dls_dir="/var/lib/apt/lists"
+
     for uri in "${SRC_APT}"; do
-        schroot -d / -c ${SBUILD_CHROOT} -- \
-            sh -c ' \
-                set -e
-                dscfile="$(apt-get -y -qq --print-uris --only-source source "${2}" | cut -d " " -f2 | grep -E "*.dsc")"
-                cd ${PP}
-                cp /downloads/deb-src/"${1}"/"${2}"/* ${PP}
-                dpkg-source -x "${dscfile}" "${PPS}"' \
-                    my_script "${BASE_DISTRO}-${BASE_DISTRO_CODENAME}" "${uri}"
+        schroot -d / -c ${SBUILD_CHROOT} -u root -- sh -c '\
+            set -e
+            mkdir -p '${dls_dir}'/partial
+            find '${ext_dls_dir}' -type f -not -name lock -maxdepth 1 \
+                -exec ln -st '${dls_dir}' {} +
+            dscfile="$(apt-get -y -qq --print-uris --only-source \
+                source "${2}" | cut -d " " -f2 | grep -E "*.dsc")"
+            cd ${PP}
+            cp /downloads/deb-src/"${1}"/"${2}"/* ${PP}
+            dpkg-source -x "${dscfile}" "${PPS}" && \
+                chown -R '$(id -u):$(id -g)' "${PPS}"
+            ' my_script "${BASE_DISTRO}-${BASE_DISTRO_CODENAME}" "${uri}"
     done
+
     schroot_delete_configs
 }
 do_apt_unpack[network] = "${TASK_USE_SUDO}"
@@ -163,7 +195,7 @@ addtask apt_unpack after do_apt_fetch
 do_cleanall_apt[nostamp] = "1"
 do_cleanall_apt() {
     for uri in "${SRC_APT}"; do
-        rm -rf "${DEBSRCDIR}"/"${DISTRO}"/"$uri"
+        sudo rm -rf "${DEBSRCDIR}"/"${DISTRO}"/"$uri"
     done
 }
 
