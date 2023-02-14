@@ -136,10 +136,20 @@ rootfs_install_pkgs_update[weight] = "5"
 rootfs_install_pkgs_update[isar-apt-lock] = "acquire-before"
 rootfs_install_pkgs_update[network] = "${TASK_USE_NETWORK_AND_SUDO}"
 rootfs_install_pkgs_update() {
+    if [ -e /etc/apt/sources.list.d/isar-apt.list ]; then
+        sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get update \
+            -o Dir::Etc::SourceList="sources.list.d/isar-apt.list" \
+            -o Dir::Etc::SourceParts="-" \
+            -o APT::Get::List-Cleanup="0"
+    else
+        bbwarn "*** rootfs_install_pkgs_update ***"\
+            "/etc/apt/sources.list.d/isar-apt.list"\
+            "NOT found"
+        sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get update \
+            -o APT::Get::List-Cleanup="0"
+    fi
     sudo -E chroot '${ROOTFSDIR}' /usr/bin/apt-get update \
-        -o Dir::Etc::SourceList="sources.list.d/isar-apt.list" \
-        -o Dir::Etc::SourceParts="-" \
-        -o APT::Get::List-Cleanup="0"
+        -o APT::Get::List-Cleanup="0" --only-source
 }
 
 ROOTFS_INSTALL_COMMAND += "rootfs_install_resolvconf"
