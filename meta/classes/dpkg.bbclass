@@ -30,7 +30,6 @@ DPKG_SBUILD_EXTRA_ARGS ?= ""
 # Build package from sources using build script
 dpkg_runbuild[vardepsexclude] += "${SBUILD_PASSTHROUGH_ADDITIONS}"
 dpkg_runbuild() {
-
     E="${@ isar_export_proxies(d)}"
     E="${@ isar_export_ccache(d)}"
     export DEB_BUILD_OPTIONS="${@ isar_deb_build_options(d)}"
@@ -109,12 +108,14 @@ dpkg_runbuild() {
     deb_dir="/var/cache/apt/archives"
     dls_dir="/var/lib/apt/lists"
 
+# RAF: just in case --no-apt-update is removed this line will transfer back the update debian lists
+#       --finished-build-commands="find ${dls_dir} -type f -maxdepth 1 -not -name lock -exec cp -nt ${ext_dls_dir} {} +" \
     sbuild -A -n -c ${SBUILD_CHROOT} --extra-repository="${ISAR_APT_REPO}" \
         --host=${PACKAGE_ARCH} --build=${SBUILD_HOST_ARCH} ${profiles} \
         --no-run-lintian --no-run-piuparts --no-run-autopkgtest --resolve-alternatives \
         --no-apt-update \
         --chroot-setup-commands="mkdir -p ${deb_dir}/partial ${dls_dir}/partial; ln -sf ${ext_deb_dir}/*.deb ${deb_dir}/" \
-        --chroot-setup-commands="ln -sf ${ext_dls_dir}/* ${dls_dir}/; rm -f ${dls_dir}/lock ${deb_dir}/lock" \
+        --chroot-setup-commands="find ${ext_dls_dir} -type f -not -name lock -maxdepth 1 -exec ln -sf -t ${dls_dir} {} +" \
         --chroot-setup-commands="echo \"Package: *\nPin: release n=${DEBDISTRONAME}\nPin-Priority: 1000\" > /etc/apt/preferences.d/isar-apt" \
         --chroot-setup-commands="echo \"APT::Get::allow-downgrades 1;\" > /etc/apt/apt.conf.d/50isar-apt" \
         --chroot-setup-commands="rm -f /var/log/dpkg.log" \
