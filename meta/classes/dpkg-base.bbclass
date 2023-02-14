@@ -28,8 +28,9 @@ python do_adjust_git() {
     dl_dir = d.getVar("DL_DIR")
     git_dl = os.path.join(dl_dir, "git")
 
-    if os.path.exists(git_link) and os.path.realpath(git_link) != os.path.realpath(git_dl):
-        os.unlink(git_link)
+    if os.path.exists(git_link):
+        if os.path.realpath(git_link) != os.path.realpath(git_dl):
+            os.unlink(git_link)
 
     if not os.path.exists(git_link):
         os.symlink(git_dl, git_link)
@@ -60,7 +61,7 @@ python do_adjust_git() {
             destdir = ud.destdir = os.path.join(rootdir, destsuffix)
 
             git_link_rel = os.path.relpath(git_link,
-                                           os.path.join(destdir, ".git/objects"))
+               os.path.join(destdir, ".git/objects"))
 
             alternates = os.path.join(destdir, ".git/objects/info/alternates")
 
@@ -114,8 +115,12 @@ do_apt_fetch() {
     trap 'schroot_cleanup' EXIT
 
     for uri in "${SRC_APT}"; do
-        schroot -d / -c ${SBUILD_CHROOT} -- \
-            sh -c 'mkdir -p /downloads/deb-src/"$1"/"$2" && cd /downloads/deb-src/"$1"/"$2" && apt-get -y --download-only --only-source source "$2"' my_script "${BASE_DISTRO}-${BASE_DISTRO_CODENAME}" "${uri}"
+        schroot -d / -c ${SBUILD_CHROOT} -- sh -c '\
+            set -e
+            mkdir -p /downloads/deb-src/"$1"/"$2"
+            cd /downloads/deb-src/"$1"/"$2"
+            apt-get -y --download-only --only-source source "$2"
+        ' my_script "${BASE_DISTRO}-${BASE_DISTRO_CODENAME}" "${uri}"
     done
     schroot_delete_configs
 }
@@ -135,6 +140,7 @@ do_apt_fetch[network] = "${TASK_USE_NETWORK_AND_SUDO}"
 do_apt_fetch[depends] += "${SCHROOT_DEP}"
 
 do_apt_unpack() {
+    set -e
     rm -rf ${S}
     schroot_create_configs
 
@@ -145,14 +151,14 @@ do_apt_unpack() {
     trap 'schroot_cleanup' EXIT
 
     for uri in "${SRC_APT}"; do
-        schroot -d / -c ${SBUILD_CHROOT} -- \
-            sh -c ' \
+        schroot -d / -c ${SBUILD_CHROOT} -- sh -c '\
                 set -e
-                dscfile="$(apt-get -y -qq --print-uris --only-source source "${2}" | cut -d " " -f2 | grep -E "*.dsc")"
+                dscfile="$(apt-get -y -qq --print-uris --only-source source \
+                    "${2}" | cut -d " " -f2 | grep -E "*.dsc")"
                 cd ${PP}
                 cp /downloads/deb-src/"${1}"/"${2}"/* ${PP}
-                dpkg-source -x "${dscfile}" "${PPS}"' \
-                    my_script "${BASE_DISTRO}-${BASE_DISTRO_CODENAME}" "${uri}"
+                dpkg-source -x "${dscfile}" "${PPS}"
+        ' my_script "${BASE_DISTRO}-${BASE_DISTRO_CODENAME}" "${uri}"
     done
     schroot_delete_configs
 }
