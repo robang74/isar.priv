@@ -31,8 +31,10 @@ buildchroot_do_mounts() {
         ( flock 9
         set -e
 
+        mkdir -p '${BUILDCHROOT_DIR}/isar-apt'
         mountpoint -q '${BUILDCHROOT_DIR}/isar-apt' ||
             mount --bind '${REPO_ISAR_DIR}/${DISTRO}' '${BUILDCHROOT_DIR}/isar-apt'
+        mkdir -p '${BUILDCHROOT_DIR}/downloads'
         mountpoint -q '${BUILDCHROOT_DIR}/downloads' ||
             mount --bind '${DL_DIR}' '${BUILDCHROOT_DIR}/downloads'
         if [ "${USE_CCACHE}" = "1" ]; then
@@ -40,12 +42,15 @@ buildchroot_do_mounts() {
             mountpoint -q '${BUILDCHROOT_DIR}/ccache' ||
                 mount --bind '${CCACHE_DIR}' '${BUILDCHROOT_DIR}/ccache'
         fi
+        mkdir -p '${BUILDCHROOT_DIR}/dev/shm' '${BUILDCHROOT_DIR}/dev/pts'
         mountpoint -q '${BUILDCHROOT_DIR}/dev' ||
             ( mount -o bind,private /dev '${BUILDCHROOT_DIR}/dev' &&
               mount -t tmpfs none '${BUILDCHROOT_DIR}/dev/shm' &&
               mount --bind /dev/pts '${BUILDCHROOT_DIR}/dev/pts' )
+        mkdir -p '${BUILDCHROOT_DIR}/proc'
         mountpoint -q '${BUILDCHROOT_DIR}/proc' ||
             mount -t proc none '${BUILDCHROOT_DIR}/proc'
+        mkdir -p '${BUILDCHROOT_DIR}/sys'
         mountpoint -q '${BUILDCHROOT_DIR}/sys' ||
             mount --rbind /sys '${BUILDCHROOT_DIR}/sys'
         mount --make-rslave '${BUILDCHROOT_DIR}/sys'
