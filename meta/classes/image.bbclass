@@ -65,8 +65,10 @@ ISAR_RELEASE_CMD_DEFAULT = "git -C ${LAYERDIR_core} describe --tags --dirty --ma
 ISAR_RELEASE_CMD ?= "${ISAR_RELEASE_CMD_DEFAULT}"
 
 image_do_mounts() {
+    set -e
     mkdir -p "${BUILDROOT_DEPLOY}" "${BUILDROOT_ROOTFS}" "${BUILDROOT_WORK}"
     sudo flock ${MOUNT_LOCKFILE} -c ' \
+        set -e
         mount --bind "${DEPLOY_DIR_IMAGE}" "${BUILDROOT_DEPLOY}"
         mount --bind "${IMAGE_ROOTFS}" "${BUILDROOT_ROOTFS}"
         mount --bind "${WORKDIR}" "${BUILDROOT_WORK}"
