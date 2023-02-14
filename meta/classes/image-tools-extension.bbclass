@@ -27,12 +27,20 @@ do_install_imager_deps() {
         return 0
     fi
 
-    schroot -r -c ${session_id} "$@"
+    distro="${BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
+    if [ ${ISAR_CROSS_COMPILE} -eq 1 ]; then
+        distro="${HOST_BASE_DISTRO}-${BASE_DISTRO_CODENAME}"
+    fi
 
     mksha() {
-        cd "${DEBDIR}/${distro}"
+        local i deb
         for i in $(echo "$@" | sort | uniq); do
-            md5sum "$(ls -1r $i*.deb $i*.DEB 2>/dev/null | head -n1)"
+            deb=$(find "${REPO_ISAR_DIR}" -name $i[_-][0-9]\*.deb)
+            test -z "$deb" && \
+                deb=$(find "${DEBDIR}/${distro}" -name $i[_-][0-9]\*.deb 2>/dev/null)
+            test -z "$deb" && \
+                deb=$RANDOM
+            md5sum "$(ls -1r $deb 2>/dev/null | head -n1)"
         done | sha1sum | cut -d' ' -f1
     }
 
@@ -87,10 +95,17 @@ do_install_imager_deps() {
             rm -f $ark/lock $dls/lock
             mkdir -p $ark/partial $dls/partial
 
-            apt-get -y update \
+if false; then
+            if [ ! -e /etc/apt/sources.list.d/isar-apt.list ]; then
+            mkdir -p '/etc/apt/sources.list.d'
+            echo 'deb [trusted=yes] file:///isar-apt ${DEBDISTRONAME} main' > \
+                '/etc/apt/sources.list.d/isar-apt.list'
+            fi
+            apt-get -y update -o APT::Get::List-Cleanup='0' \
                 -o Dir::Etc::SourceList='sources.list.d/isar-apt.list' \
-                -o Dir::Etc::SourceParts='-' \
-                -o APT::Get::List-Cleanup='0'
+                -o Dir::Etc::SourceParts='-'
+fi
+
             export XZ_OPT='-T ${XZ_THREADS}'
             rm -rf /usr/share/man /usr/share/doc
             apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends \
